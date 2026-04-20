@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "webot"
+version = "0.1.0"
+description = "微信机器人：封装点击、输入、窗口管理等UI自动化技能"
+readme = "README.md"
+authors = [
+    {name = "Awen", email = "lvyu@cxtc.edu.cn"}
+]
+license = {text = "LGPL-2.1-only"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "pyautogui>=0.9.54",
+    "pyperclip>=1.11.0",
+    "pygetwindow>=0.0.9",
+    "opencv-python>=4.13.0.92",
+    "pyscreeze>=1.0.1",
+    "pillow>=10.4.0",
+]
+
+[project.scripts]
+webot = "webot.main:main"
+
+[tool.hatch.build]
+packages = ["src/webot"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/webot"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/webot/images" = "webot/images"
+
+# 开发依赖组（新方式）
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+]
