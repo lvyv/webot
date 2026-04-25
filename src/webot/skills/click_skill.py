@@ -18,7 +18,7 @@ def click_ui_element(image_path, confidence=CONFIDENCE_LEVEL,
             )
             if location:
                 pyautogui.click(location)
-                logger.info(f"点击成功: {os.path.basename(image_path)}")
+                logger.info(f"点击成功:{location.x} {location.y}  {os.path.basename(image_path)}")
                 return True
             else:
                 logger.warning(f"尝试 {attempt}/{retry} 未找到: {image_path}")

@@ -30,6 +30,31 @@ def resize_window(window_title, width, height):
     logger.error(f"调整大小失败，未找到窗口: {window_title}")
     return False
 
+
+def maximize_window(window_title):
+    """
+    最大化指定标题的窗口。
+
+    Args:
+        window_title (str): 窗口标题（支持模糊匹配）
+
+    Returns:
+        bool: 成功返回 True，失败返回 False
+    """
+    windows = gw.getWindowsWithTitle(window_title)
+    if windows:
+        win = windows[0]
+        try:
+            win.maximize()
+            logger.info(f"窗口已最大化: {window_title}")
+            return True
+        except Exception as e:
+            logger.error(f"最大化窗口失败: {window_title}, 错误: {e}")
+            return False
+    else:
+        logger.error(f"最大化失败，未找到窗口: {window_title}")
+        return False
+
 def center_window(window_title):
     windows = gw.getWindowsWithTitle(window_title)
     if not windows:

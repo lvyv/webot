@@ -13,7 +13,8 @@ def scroll_page(delta, duration=SCROLL_DELAY):
     time.sleep(duration)
     logger.debug(f"滚动 {delta} 格")
 
-def scroll_repeatedly(amount, times=1, direction="up"):
+def scroll_repeatedly(amount=30, times=1, direction="up"):
+    # 1 times = 40 pixels per 30 amount.
     delta = amount if direction == "up" else -amount
     for _ in range(times):
         scroll_page(delta)
