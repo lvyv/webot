@@ -373,8 +373,8 @@ if __name__ == "__main__":
     
     # 使用template方法拼接
     merge_stitch(
-        ["test/output/cap_001.png.crop.png", "test/output/cap_000.png.crop.png"],
+        ["test/output/cap_000.png.crop.png", "test/output/cap_001.png.crop.png"],
         "test/output/merged.png",
-        method='template',
+        method='ncc',
         blend_width=25
     )

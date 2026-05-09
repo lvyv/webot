@@ -1,7 +1,7 @@
 from paddleocr import PaddleOCR
 
-ocr = PaddleOCR()
-result = ocr.predict(input='./images/blackboard.jpg')
+ocr = PaddleOCR(use_doc_unwarping=False)
+result = ocr.predict(input='./output/after_result.png')
 
 for res in result:
     # 1. 打印结构化信息到控制台

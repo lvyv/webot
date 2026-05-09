@@ -3,6 +3,7 @@ from .input_skill import clear_text_field, input_text, find_and_input_text
 from .window_skill import activate_window, resize_window, maximize_window, center_window
 from .scroll_skill import scroll_page, scroll_repeatedly
 from .wait_skill import wait_for_user_focus
+from .chat_ocr_skill import read_chat_history
 
 __all__ = [
     "click_ui_element",
@@ -16,4 +17,5 @@ __all__ = [
     "scroll_page",
     "scroll_repeatedly",
     "wait_for_user_focus",
+    "read_chat_history",
 ]
