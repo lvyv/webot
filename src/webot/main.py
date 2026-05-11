@@ -1,15 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# main.py
-import os
-import tempfile
+import sys
+import logging
 from importlib.resources import files, as_file
+
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout,
+    QPushButton, QLineEdit, QTextEdit, QLabel,
+)
+from PyQt6.QtGui import QFont
+
+import pyautogui
+
 from webot import config
 from webot.skills import (
-    resize_window, center_window, activate_window, maximize_window,
-    click_ui_element, clear_text_field, find_and_input_text,
-    scroll_repeatedly, wait_for_user_focus, read_chat_history,
+    resize_window, move_window, activate_window, click_ui_element,
+    find_and_input_text,
 )
+from webot.command_parser import CommandParser
 from webot.utils import get_logger
 
 logger = get_logger(__name__)
@@ -21,86 +29,131 @@ def get_image_path(filename):
         return str(path)
 
 
-def get_screenshot_dir():
-    path = os.path.join(os.getcwd(), "screenshots")
-    os.makedirs(path, exist_ok=True)
-    return path
+class QTextEditHandler(logging.Handler):
+    def __init__(self, text_edit):
+        super().__init__()
+        self.text_edit = text_edit
+        self.setFormatter(logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(message)s',
+            datefmt='%H:%M:%S',
+        ))
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.text_edit.append(msg)
+
+
+class WebotWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Webot 微信助手")
+        self.setMinimumSize(600, 400)
+
+        self._cmd_parser = CommandParser()
+        self._setup_commands()
+        self._setup_ui()
+
+    def _setup_commands(self):
+        self._cmd_parser.register(
+            "search_contact",
+            r'^/contact:(.+)$',
+            self._handle_search_contact,
+        )
+        self._cmd_parser.register(
+            "send_message",
+            r'^/([^：]+)：(.*)$',
+            self._handle_send_message,
+        )
+
+    def _setup_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
+        layout = QVBoxLayout(central)
+
+        self.btn_side = QPushButton("并排显示微信")
+        self.btn_side.setMinimumHeight(36)
+        self.btn_side.clicked.connect(self._side_by_side)
+        layout.addWidget(self.btn_side)
+
+        layout.addSpacing(8)
+        layout.addWidget(QLabel("指令输入 (Enter 执行):"))
+
+        self.input_field = QLineEdit()
+        self.input_field.setPlaceholderText(
+            "/contact:张三  或   /张三：你好"
+        )
+        self.input_field.returnPressed.connect(self._execute_command)
+        layout.addWidget(self.input_field)
+
+        layout.addSpacing(8)
+        layout.addWidget(QLabel("操作日志:"))
+
+        self.log_output = QTextEdit()
+        self.log_output.setReadOnly(True)
+        self.log_output.setFont(QFont("Consolas", 9))
+        layout.addWidget(self.log_output)
+
+        handler = QTextEditHandler(self.log_output)
+        logging.getLogger('webot').addHandler(handler)
+
+    def _side_by_side(self):
+        screen_w, screen_h = pyautogui.size()
+        half_w = screen_w // 2
+
+        resize_window(config.WECHAT_WINDOW_TITLE, half_w, screen_h)
+        move_window(config.WECHAT_WINDOW_TITLE, 0, 0)
+
+        self.move(half_w, 0)
+        self.resize(half_w, screen_h)
+
+        activate_window(config.WECHAT_WINDOW_TITLE)
+        logger.info("并排显示完成：微信左屏 | Webot 右屏")
+
+    def _execute_command(self):
+        text = self.input_field.text()
+        if not text.startswith("/"):
+            logger.warning(f"指令必须以 / 开头: {text}")
+            self.input_field.clear()
+            return
+        success = self._cmd_parser.execute(text)
+        if not success:
+            logger.warning(f"无法识别的指令: {text}")
+        self.input_field.clear()
+
+    def _handle_search_contact(self, name):
+        name = name.strip()
+        logger.info(f"执行命令：搜索联系人 [{name}]")
+        activate_window(config.WECHAT_WINDOW_TITLE)
+        click_ui_element(get_image_path(config.BTN_CONTACTS_IMAGE))
+        find_and_input_text(
+            get_image_path(config.INPUT_SEARCH_CONTACT),
+            name, send_enter=True,
+        )
+        logger.info(f"联系人 [{name}] 已搜索并打开")
+
+    def _handle_send_message(self, contact, message):
+        contact = contact.strip()
+        message = message.strip()
+        logger.info(f"执行命令：向 [{contact}] 发送消息")
+        activate_window(config.WECHAT_WINDOW_TITLE)
+        click_ui_element(get_image_path(config.BTN_CONTACTS_IMAGE))
+        find_and_input_text(
+            get_image_path(config.INPUT_SEARCH_CONTACT),
+            contact, send_enter=True,
+        )
+        find_and_input_text(
+            get_image_path(config.INPUT_MESSAGE_IN),
+            message, send_enter=True,
+        )
+        logger.info(f"已向 [{contact}] 发送消息")
 
 
 def main():
-    logger.info("启动 Webot 微信机器人")
+    app = QApplication(sys.argv)
+    window = WebotWindow()
+    window.show()
+    sys.exit(app.exec())
 
-    resize_window(config.WECHAT_WINDOW_TITLE,
-                  config.DEFAULT_WINDOW_WIDTH,
-                  config.DEFAULT_WINDOW_HEIGHT)
-    center_window(config.WECHAT_WINDOW_TITLE)
-    activate_window(config.WECHAT_WINDOW_TITLE)
-
-    contacts_path = get_image_path(config.BTN_CONTACTS_IMAGE)
-    click_ui_element(contacts_path)
-
-    wait_for_user_focus(seconds=1, message="请确保微信聊天窗口已打开且可见")
-
-    input_box_path = get_image_path(config.INPUT_SEARCH_CONTACT)
-    success = find_and_input_text(
-        image_path=input_box_path,
-        text="口口",
-        send_enter=True,
-        confidence=config.CONFIDENCE_LEVEL
-    )
-
-    if not success:
-        logger.error("搜索联系人失败，终止后续操作")
-        return
-
-    import pyautogui
-
-    maximize_window("微信")
-    wait_for_user_focus(seconds=1, message="请确保微信聊天窗口最大化")
-
-    input_box_path = get_image_path(config.INPUT_MESSAGE_IN)
-    clear_text_field(input_box_path)
-    find_and_input_text(input_box_path, '浏览聊天历史记录...', send_enter=False)
-
-    pyautogui.moveRel(0, -100, duration=0.5)
-
-    shot_dir = get_screenshot_dir()
-    num_shots = 5
-    for idx in range(num_shots):
-        scroll_repeatedly(times=10, direction="up")
-        path = os.path.join(shot_dir, f"cap_{idx:03d}.png")
-        pyautogui.screenshot(path)
-        logger.info(f"截图已保存: {path}")
-
-    result = read_chat_history(shot_dir)
-
-    if result is None:
-        logger.error("读取聊天记录失败")
-        return
-
-    rect = result["chat_region"]
-    ocr = result["ocr_result"]
-    texts = ocr["texts"]
-
-    print("=" * 50)
-    print(f"聊天区域: {rect}")
-    print(f"裁剪图片: {result['cropped_count']} 张")
-    print(f"拼接结果: {result['stitched_path']}")
-    print(f"OCR 结果: {ocr['json_path']}")
-    print("-" * 50)
-    print("聊天记录:")
-    for i, line in enumerate(texts, 1):
-        print(f"  {i:>3}. {line}")
-    print("=" * 50)
-
-    logger.info(f"Webot 演示流程完成，共识别 {len(texts)} 条消息")
-
-    resize_window(config.WECHAT_WINDOW_TITLE,
-                  config.DEFAULT_WINDOW_WIDTH,
-                  config.DEFAULT_WINDOW_HEIGHT)
-    center_window(config.WECHAT_WINDOW_TITLE)
-    activate_window(config.WECHAT_WINDOW_TITLE)
-    logger.info("微信窗口已恢复原始尺寸，操作结束")
 
 if __name__ == "__main__":
     main()

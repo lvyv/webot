@@ -55,6 +55,17 @@ def maximize_window(window_title):
         logger.error(f"最大化失败，未找到窗口: {window_title}")
         return False
 
+def move_window(window_title, x, y):
+    windows = gw.getWindowsWithTitle(window_title)
+    if not windows:
+        logger.error(f"未找到窗口: {window_title}")
+        return False
+    win = windows[0]
+    win.moveTo(x, y)
+    logger.info(f"窗口已移动: {window_title} -> ({x}, {y})")
+    return True
+
+
 def center_window(window_title):
     windows = gw.getWindowsWithTitle(window_title)
     if not windows:
