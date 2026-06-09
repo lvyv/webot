@@ -232,7 +232,8 @@ class MainWindow(QMainWindow):
                 time.sleep(0.03)
         finally:
             self._replaying = False
-        self.signals.replay_log.emit(f"[回放] 回放完成，共执行 {len(events)} 条")
+            self.signals.replay_log.emit(f"[回放] 回放完成，共执行 {len(events)} 条")
+
 
     @staticmethod
     def _parse_button(s):
