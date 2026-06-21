@@ -30,6 +30,8 @@ dependencies = [
     "pyaudio>=0.2.14",
     "pyqt6>=6.7.0",
     "pynput>=1.8.2",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.scripts]

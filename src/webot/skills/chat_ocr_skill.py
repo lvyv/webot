@@ -7,6 +7,7 @@ import glob
 import os
 from ..config import CHAT_REGION_THRESHOLD, CHAT_MIN_CONTOUR_AREA, CHAT_BLEND_WIDTH, OCR_CONFIDENCE_THRESHOLD
 from ..utils import get_logger
+from .base import Skill
 
 logger = get_logger(__name__)
 
@@ -282,3 +283,18 @@ def read_chat_history(image_dir, output_dir=None, ref_images=None, threshold=CHA
         "stitched_path": result_path,
         "ocr_result": ocr_result,
     }
+
+
+class ReadChatHistorySkill(Skill):
+    name = "read_chat_history"
+    description = "读取微信聊天记录（需先截图到目录）"
+    parameters = {
+        "image_dir": {"type": "string", "description": "截图目录路径"},
+    }
+
+    def execute(self, image_dir):
+        result = read_chat_history(image_dir)
+        if result is None:
+            return "读取聊天记录失败"
+        texts = result.get("ocr_result", {}).get("texts", [])
+        return "\n".join(texts) if texts else "未读取到文本"

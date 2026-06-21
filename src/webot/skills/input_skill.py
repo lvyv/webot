@@ -7,6 +7,8 @@ import time
 from ..config import POST_CLICK_DELAY, PASTE_DELAY, CONFIDENCE_LEVEL
 from ..utils import get_logger
 from .click_skill import click_ui_element
+from ..utils import get_image_path
+from .base import Skill
 
 logger = get_logger(__name__)
 
@@ -34,3 +36,28 @@ def find_and_input_text(image_path, text, send_enter=True, confidence=CONFIDENCE
     time.sleep(POST_CLICK_DELAY)
     input_text(text, press_enter=send_enter)
     return True
+
+
+class InputTextSkill(Skill):
+    name = "input_text"
+    description = "向当前焦点位置粘贴输入文本"
+    parameters = {
+        "text": {"type": "string", "description": "要输入的文本"},
+    }
+
+    def execute(self, text):
+        input_text(text, press_enter=True)
+        return f"已输入: {text[:50]}"
+
+
+class FindAndInputTextSkill(Skill):
+    name = "find_and_input_text"
+    description = "查找目标图标并输入文本"
+    parameters = {
+        "image_path": {"type": "string", "description": "图标文件名"},
+        "text": {"type": "string", "description": "要输入的文本"},
+    }
+
+    def execute(self, image_path, text):
+        ok = find_and_input_text(get_image_path(image_path), text)
+        return f"已找到 {image_path} 并输入" if ok else f"操作失败"

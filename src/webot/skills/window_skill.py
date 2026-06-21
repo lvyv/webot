@@ -5,6 +5,7 @@ import pyautogui
 import pygetwindow as gw
 import time
 from ..utils import get_logger
+from .base import Skill
 
 logger = get_logger(__name__)
 
@@ -78,3 +79,43 @@ def center_window(window_title):
     win.moveTo(x, y)
     logger.info(f"窗口已居中: {window_title}")
     return True
+
+
+class ActivateWindowSkill(Skill):
+    name = "activate_window"
+    description = "激活指定标题的窗口"
+    parameters = {
+        "window_title": {"type": "string", "description": "窗口标题"},
+    }
+
+    def execute(self, window_title):
+        ok = activate_window(window_title)
+        return f"窗口 {window_title} 已激活" if ok else f"激活失败"
+
+
+class ResizeWindowSkill(Skill):
+    name = "resize_window"
+    description = "调整窗口大小"
+    parameters = {
+        "window_title": {"type": "string", "description": "窗口标题"},
+        "width": {"type": "integer", "description": "宽度"},
+        "height": {"type": "integer", "description": "高度"},
+    }
+
+    def execute(self, window_title, width, height):
+        ok = resize_window(window_title, width, height)
+        return f"窗口已调整 {width}x{height}" if ok else "调整失败"
+
+
+class MoveWindowSkill(Skill):
+    name = "move_window"
+    description = "移动窗口到指定坐标"
+    parameters = {
+        "window_title": {"type": "string", "description": "窗口标题"},
+        "x": {"type": "integer", "description": "X 坐标"},
+        "y": {"type": "integer", "description": "Y 坐标"},
+    }
+
+    def execute(self, window_title, x, y):
+        ok = move_window(window_title, x, y)
+        return f"窗口已移动到 ({x}, {y})" if ok else "移动失败"
