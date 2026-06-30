@@ -182,11 +182,11 @@ def send_reply(reply_text):
 def process_chat(chat_name, item_index, rules):
     logger.info(f"处理聊天: [{chat_name}] (item #{item_index})")
 
-    if not activate_window(WECHAT_WINDOW_TITLE, WECHAT_WINDOW_CLSNAME):
-        logger.error("无法激活微信窗口")
-        return False
+    # if not activate_window(WECHAT_WINDOW_TITLE, WECHAT_WINDOW_CLSNAME):
+    #     logger.error("无法激活微信窗口")
+    #     return False
 
-    time.sleep(0.5)
+    # time.sleep(0.5)
 
     if not click_chat_by_index(item_index):
         return False
