@@ -3,23 +3,40 @@
 
 import pyautogui
 import pygetwindow as gw
-import time
+import ctypes
+from webot import config
 from ..utils import get_logger
 from .base import Skill
 
 logger = get_logger(__name__)
 
-def activate_window(window_title):
-    windows = gw.getWindowsWithTitle(window_title)
-    if not windows:
-        logger.error(f"未找到窗口: {window_title}")
+SW_SHOWMAXIMIZED = 3
+# RDW_INVALIDATE = 0x0001
+# RDW_UPDATENOW = 0x0100
+# RDW_ALLCHILDREN = 0x0080
+
+def activate_window(window_title, CLASS_NAME):
+    try:
+        pyautogui.hotkey("ctrl", "alt", "w")        
+        windows = gw.getWindowsWithTitle(window_title)
+        if not windows:
+            user32 = ctypes.windll.user32
+            hwnd = user32.FindWindowW(CLASS_NAME, None)
+            if not hwnd:
+                logger.warning("未找到微信窗口")
+                return False
+        else:
+            hwnd = windows[0]._hWnd
+        user32 = ctypes.windll.user32
+        user32.ShowWindow(hwnd, SW_SHOWMAXIMIZED)
+        user32.SetForegroundWindow(hwnd)
+        user32.BringWindowToTop(hwnd)
+        logger.info("已激活微信")
+        return True
+    except Exception as e:
+        logger.error(f"激活微信失败: {e}")
         return False
-    win = windows[0]
-    if not win.isActive:
-        win.activate()
-    time.sleep(0.3)
-    logger.info(f"窗口已激活: {window_title}")
-    return True
+
 
 def resize_window(window_title, width, height):
     windows = gw.getWindowsWithTitle(window_title)
@@ -89,7 +106,7 @@ class ActivateWindowSkill(Skill):
     }
 
     def execute(self, window_title):
-        ok = activate_window(window_title)
+        ok = activate_window(window_title, config.WECHAT_WINDOW_CLSNAME)
         return f"窗口 {window_title} 已激活" if ok else f"激活失败"
 
 

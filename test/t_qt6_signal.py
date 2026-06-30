@@ -72,12 +72,22 @@ if __name__ == "__main__":
     # 创建窗口
     timer_window = TimerWindow("定时器发射器")
     receiver_window = ReceiverWindow()
+    receiver_window2 = ReceiverWindow()
+    receiver_window3 = ReceiverWindow()
+    
     
     # 连接信号槽
     timer_window.time_updated.connect(receiver_window.update_time_display)
-    
+    timer_window.time_updated.connect(receiver_window2.update_time_display)
+    timer_window.time_updated.connect(receiver_window3.update_time_display)
+
     # 显示窗口
     timer_window.show()
     receiver_window.show()
+    receiver_window2.show()
+    receiver_window3.show()
+
     
-    sys.exit(app.exec())
+    res = app.exec()
+
+    sys.exit(res)

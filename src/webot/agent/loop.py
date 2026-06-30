@@ -1,6 +1,6 @@
 import time
 
-from ..config import AGENT_POLL_INTERVAL
+from ..config import AGENT_POLL_INTERVAL, AGENT_MAX_TOOL_ITERATIONS
 from ..utils import get_logger
 from ..skills.reddot_skill import get_unread_chats
 from ..skills.auto_reply_skill import load_rules, should_auto_reply, select_reply, process_chat
@@ -113,10 +113,10 @@ class AgentLoop:
 
         from ..skills.auto_reply_skill import click_chat_by_index, read_chat_area, send_reply
         from ..skills.window_skill import activate_window
-        from ..config import WECHAT_WINDOW_TITLE
+        from ..config import WECHAT_WINDOW_TITLE, WECHAT_WINDOW_CLSNAME
 
         import time
-        if not activate_window(WECHAT_WINDOW_TITLE):
+        if not activate_window(WECHAT_WINDOW_TITLE, WECHAT_WINDOW_CLSNAME):
             return False
         time.sleep(0.5)
         if not click_chat_by_index(item_index):
@@ -146,13 +146,17 @@ class AgentLoop:
         if self.skill_manager:
             tools = self.skill_manager.get_tools_spec()
 
+        iteration = 0
+        max_iterations = AGENT_MAX_TOOL_ITERATIONS
+
         try:
             resp = self.llm_client.chat(llm_messages, tools=tools if tools else None)
         except Exception as e:
             logger.error(f"LLM 调用失败: {e}")
             return False
 
-        if resp["type"] == "tool_calls":
+        while resp["type"] == "tool_calls" and iteration < max_iterations:
+            iteration += 1
             for tc in resp["tool_calls"]:
                 result = self.skill_manager.execute(tc["name"], tc["arguments"])
                 llm_messages.append({
@@ -160,14 +164,18 @@ class AgentLoop:
                     "tool_call_id": tc["id"],
                     "content": result,
                 })
+            if self.session:
+                llm_messages = self.session.intervene(chat_name, llm_messages)
             try:
-                final = self.llm_client.chat(llm_messages)
-                reply = final.get("content", "")
+                resp = self.llm_client.chat(llm_messages, tools=tools if tools else None)
             except Exception as e:
-                logger.error(f"LLM 二次调用失败: {e}")
+                logger.error(f"LLM 第 {iteration} 轮调用失败: {e}")
                 return False
-        else:
-            reply = resp.get("content", "")
+
+        if iteration >= max_iterations:
+            logger.warning(f"LLM tool 调用达到上限 {max_iterations}，取当前结果")
+
+        reply = resp.get("content", "")
 
         if not reply:
             return False

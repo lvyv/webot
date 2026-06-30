@@ -164,14 +164,10 @@ def _infer_item_index(y):
 
 def ocr_chat_list(bgr_img):
     ocr = get_ocr_engine()
-    tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-    tmp_path = tmp.name
-    tmp.close()
-    try:
-        cv2.imwrite(tmp_path, bgr_img)
-        result = ocr.predict(input=tmp_path)
-    finally:
-        os.unlink(tmp_path)
+    # 注意：PaddleOCR 内部通常期望 RGB 格式，而 OpenCV 读取的是 BGR
+    # 建议先转换颜色通道，避免识别结果偏色或准确率下降
+    rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+    result = ocr.predict(input=rgb_img)   # 直接传入 numpy 数组
 
     if not result:
         return []
@@ -197,6 +193,40 @@ def ocr_chat_list(bgr_img):
                 "item_index": idx,
             })
     return items
+    # ocr = get_ocr_engine()
+    # tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    # tmp_path = tmp.name
+    # tmp.close()
+    # try:
+    #     cv2.imwrite(tmp_path, bgr_img)
+    #     result = ocr.predict(input=tmp_path)
+    # finally:
+    #     os.unlink(tmp_path)
+
+    # if not result:
+    #     return []
+
+    # page = result[0]
+    # boxes = page.get("rec_boxes", [])
+    # texts = page.get("rec_texts", [])
+    # scores = page.get("rec_scores", [])
+
+    # items = []
+    # for box, text, score in zip(boxes, texts, scores):
+    #     x1, y1, x2, y2 = box
+    #     cx = (x1 + x2) / 2
+    #     cy = (y1 + y2) / 2
+    #     idx = _infer_item_index(cy)
+    #     if idx is not None:
+    #         items.append({
+    #             "text": text,
+    #             "score": score,
+    #             "box": box,
+    #             "cx": cx,
+    #             "cy": cy,
+    #             "item_index": idx,
+    #         })
+    # return items
 
 
 def group_items_by_chat(items):
@@ -300,7 +330,7 @@ def match_red_dots_to_items(red_dots, sorted_groups):
     return filtered_result
 
 def get_unread_chats():
-    img = capture_chat_list_region()
+    img = capture_chat_list_region() # 这个图片是微信窗口左边0，下90（让开搜索和我），0.3宽度的区域
     if img is None:
         return []
 

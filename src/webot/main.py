@@ -70,7 +70,7 @@ class WebotWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Webot 助手")
         self.setWindowIcon(QIcon(get_image_path("webot.png")))
-        self.setGeometry(100, 100, 640, 500)
+        self.setGeometry(600, 100, 400, 500)
         self.setWindowOpacity(0.85)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
 
@@ -267,26 +267,13 @@ class WebotWindow(QMainWindow):
 
     @staticmethod
     def _activate_wechat():
-        import ctypes
-        import pygetwindow as gw
-        try:
-            windows = gw.getWindowsWithTitle("微信")
-            if not windows:
-                CLASS_NAME = "Qt51514QWindowIcon"
-                user32 = ctypes.windll.user32
-                hwnd = user32.FindWindowW(CLASS_NAME, None)
-                if not hwnd:
-                    logger.warning("未找到微信窗口")
-                    return
-            else:
-                hwnd = windows[0]._hWnd
-            user32 = ctypes.windll.user32
-            user32.ShowWindow(hwnd, 3)
-            user32.SetForegroundWindow(hwnd)
-            user32.BringWindowToTop(hwnd)
-            logger.info("已激活微信")
-        except Exception as e:
-            logger.error(f"激活微信失败: {e}")
+        from webot.skills.window_skill import activate_window
+        from webot import config
+        ok = activate_window(config.WECHAT_WINDOW_TITLE, config.WECHAT_WINDOW_CLSNAME)
+        if ok:
+            logger.info("微信窗口已激活")
+        else:
+            logger.warning("未找到微信窗口，激活失败")
 
     @staticmethod
     def _minimize_wechat():
@@ -325,7 +312,7 @@ class WebotWindow(QMainWindow):
         self.move(half_w, 0)
         self.resize(half_w, screen_h)
 
-        activate_window(config.WECHAT_WINDOW_TITLE)
+        activate_window(config.WECHAT_WINDOW_TITLE, config.WECHAT_WINDOW_CLSNAME)
         logger.info("并排显示完成：微信左屏 | Webot 右屏")
 
     def _execute_command(self):
@@ -358,7 +345,7 @@ class WebotWindow(QMainWindow):
     def _handle_search_contact(self, name):
         name = name.strip()
         logger.info(f"执行命令：搜索联系人 [{name}]")
-        activate_window(config.WECHAT_WINDOW_TITLE)
+        activate_window(config.WECHAT_WINDOW_TITLE, config.WECHAT_WINDOW_CLSNAME)
         click_ui_element(get_image_path(config.BTN_CONTACTS_IMAGE))
         find_and_input_text(
             get_image_path(config.INPUT_SEARCH_CONTACT),
@@ -370,7 +357,7 @@ class WebotWindow(QMainWindow):
         contact = contact.strip()
         message = message.strip()
         logger.info(f"执行命令：向 [{contact}] 发送消息")
-        activate_window(config.WECHAT_WINDOW_TITLE)
+        activate_window(config.WECHAT_WINDOW_TITLE, config.WECHAT_WINDOW_CLSNAME)
         click_ui_element(get_image_path(config.BTN_CONTACTS_IMAGE))
         find_and_input_text(
             get_image_path(config.INPUT_SEARCH_CONTACT),

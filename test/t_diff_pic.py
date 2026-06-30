@@ -78,6 +78,7 @@ def crop_by_rect(img_path, rect):
     cv2.imwrite(f'{img_path}.crop.png', cropped)
 
 if __name__ == '__main__':
+    
     # 使用示例
     result_img, binary_img, rect = compare_by_absdiff('output/cap_000.png', 'output/cap_002.png')
     # 在 imshow 之前或之后, 移动名为 'Differences' 的窗口

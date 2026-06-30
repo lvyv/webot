@@ -63,6 +63,11 @@ packages = ["src/webot"]
 "src/webot/images" = "webot/images"
 
 # 开发依赖组（新方式）
+[tool.pytest.ini_options]
+markers = [
+    "integration: 真实依赖外部环境的集成测试（默认不包含在批量运行中）",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=7.0",

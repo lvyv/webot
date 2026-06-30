@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "auto_reply_groups": [],
+  "auto_reply_contacts": ["文件传输助手"],
+  "reply_patterns": [
+    {
+      "name": "工作时间",
+      "match_type": "time_range",
+      "time_start": "09:00",
+      "time_end": "18:00",
+      "response": "您好，我现在正在工作，稍后详细回复您。"
+    },
+    {
+      "name": "非工作时间",
+      "match_type": "time_range",
+      "time_start": "18:00",
+      "time_end": "09:00",
+      "response": "您好，已收到您的消息，明天上班后我会尽快处理。"
+    },
+    {
+      "name": "默认回复",
+      "match_type": "always",
+      "response": "您好，您的消息我已收到，会尽快回复。"
+    }
+  ],
+  "reply_mode": "first_match"
+}

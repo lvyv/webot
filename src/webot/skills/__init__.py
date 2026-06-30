@@ -11,6 +11,7 @@ from .auto_reply_skill import (
     select_reply, click_chat_by_index, read_chat_area, send_reply,
     ProcessChatSkill, SendReplySkill, ClickChatSkill,
 )
+from .cursor_pos_calculate_skill import calculate_cursor_position, CalculateCursorPositionSkill
 from .base import Skill
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "load_rules", "should_auto_reply", "process_chat", "auto_reply_cycle",
     "select_reply", "click_chat_by_index", "read_chat_area", "send_reply",
     "ProcessChatSkill", "SendReplySkill", "ClickChatSkill",
+    "calculate_cursor_position", "CalculateCursorPositionSkill",
     "Skill",
 ]

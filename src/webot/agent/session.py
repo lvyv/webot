@@ -35,6 +35,9 @@ class Session:
             return True
         return last != preview
 
+    def intervene(self, chat_name: str, messages: list[dict]) -> list[dict]:
+        return messages
+
     def clear(self, chat_name=None):
         if chat_name:
             self._contexts.pop(chat_name, None)

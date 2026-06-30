@@ -11,6 +11,7 @@ from .window_skill import activate_window
 from .reddot_skill import get_wechat_rect, get_ocr_engine, get_unread_chats
 from ..config import (
     WECHAT_WINDOW_TITLE,
+    WECHAT_WINDOW_CLSNAME,
     CHAT_LIST_WIDTH_RATIO,
     CHAT_ITEM_HEIGHT,
     CHAT_LIST_TOP_OFFSET,
@@ -181,7 +182,7 @@ def send_reply(reply_text):
 def process_chat(chat_name, item_index, rules):
     logger.info(f"处理聊天: [{chat_name}] (item #{item_index})")
 
-    if not activate_window(WECHAT_WINDOW_TITLE):
+    if not activate_window(WECHAT_WINDOW_TITLE, WECHAT_WINDOW_CLSNAME):
         logger.error("无法激活微信窗口")
         return False
 
