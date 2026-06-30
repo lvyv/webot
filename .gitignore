@@ -1,6 +1,6 @@
 __pycache__/
 .pytest_cache/
-screenshorts/
+screenshots/
 output/
 *.pyc
 .venv/
@@ -8,3 +8,5 @@ dist/
 *.egg-info/
 .env
 .idea
+.vscode
+memory.jsonl
