@@ -1,5 +1,5 @@
 import pyautogui
-from ..config import CONFIDENCE_LEVEL, RETRY_TIMES, RETRY_DELAY
+from ..utils import CONFIDENCE_LEVEL, RETRY_TIMES, RETRY_DELAY
 from ..utils import get_logger, get_image_path
 from .base import Skill
 

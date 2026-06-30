@@ -4,7 +4,7 @@
 import pyautogui
 import time
 import os
-from ..config import RETRY_TIMES, RETRY_DELAY, CONFIDENCE_LEVEL
+from ..utils import RETRY_TIMES, RETRY_DELAY, CONFIDENCE_LEVEL
 from ..utils import get_logger, get_image_path
 from .base import Skill
 

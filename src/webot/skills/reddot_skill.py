@@ -6,7 +6,7 @@ import numpy as np
 import pyautogui
 import pygetwindow as gw
 
-from ..config import (
+from ..utils import (
     WECHAT_WINDOW_TITLE,
     CHAT_LIST_WIDTH_RATIO,
     CHAT_ITEM_HEIGHT,

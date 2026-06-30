@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import glob
 import os
-from ..config import CHAT_REGION_THRESHOLD, CHAT_MIN_CONTOUR_AREA, CHAT_BLEND_WIDTH, OCR_CONFIDENCE_THRESHOLD
+from ..utils import CHAT_REGION_THRESHOLD, CHAT_MIN_CONTOUR_AREA, CHAT_BLEND_WIDTH, OCR_CONFIDENCE_THRESHOLD
 from ..utils import get_logger
 from .base import Skill
 

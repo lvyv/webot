@@ -4,7 +4,7 @@
 import pyautogui
 import pyperclip
 import time
-from ..config import POST_CLICK_DELAY, PASTE_DELAY, CONFIDENCE_LEVEL
+from ..utils import POST_CLICK_DELAY, PASTE_DELAY, CONFIDENCE_LEVEL
 from ..utils import get_logger
 from .click_skill import click_ui_element
 from ..utils import get_image_path

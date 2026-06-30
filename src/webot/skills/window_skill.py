@@ -4,7 +4,7 @@
 import pyautogui
 import pygetwindow as gw
 import ctypes
-from webot import config
+from webot.utils import config
 from ..utils import get_logger
 from .base import Skill
 

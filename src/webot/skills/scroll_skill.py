@@ -3,7 +3,7 @@
 
 import pyautogui
 import time
-from ..config import SCROLL_DELAY
+from ..utils import SCROLL_DELAY
 from ..utils import get_logger
 from .base import Skill
 

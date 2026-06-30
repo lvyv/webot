@@ -1,50 +1,310 @@
+import multiprocessing
+import threading
 import time
+from queue import Empty
 
-from ..config import AGENT_POLL_INTERVAL, AGENT_MAX_TOOL_ITERATIONS
+from ..utils import AGENT_POLL_INTERVAL, AGENT_MAX_TOOL_ITERATIONS
 from ..utils import get_logger
 from ..skills.reddot_skill import get_unread_chats
-from ..skills.auto_reply_skill import load_rules, should_auto_reply, select_reply, process_chat
+from ..skills.auto_reply_skill import (
+    load_rules,
+    should_auto_reply,
+    select_reply,
+    click_chat_by_position,
+    find_file_helper_y,
+    send_confirm_request,
+)
 
 logger = get_logger(__name__)
 
 
-class ReplyMode:
-    TEMPLATE = "template"
-    LLM = "llm"
-    LLM_FALLBACK = "llm_with_fallback"
+PENDING_CONFIRM_PREFIX = "pending_confirm:"
 
 
-class AgentLoop:
-    def __init__(self, skill_manager=None, memory=None, session=None, llm_client=None):
-        self.skill_manager = skill_manager
-        self.memory = memory
-        self.session = session
-        self.llm_client = llm_client
+def _extract_confirm_info(task_messages: str) -> dict | None:
+    """从文件传输助手的 OCR 文本中解析确认回复。"""
+    lines = task_messages.strip().split("\n")
+    chat_name = None
+    action = None
+    modified_text = None
+    for line in lines:
+        line = line.strip()
+        if line.startswith("联系人："):
+            chat_name = line[4:].strip()
+        elif line == "@同意":
+            action = "agree"
+        elif line == "@拒绝":
+            action = "reject"
+        elif line.startswith("@修改:"):
+            action = "modify"
+            modified_text = line[4:].strip()
+    if chat_name and action:
+        return {
+            "chat_name": chat_name,
+            "action": action,
+            "modified_text": modified_text,
+        }
+    return None
+
+
+class ReplyWorker(multiprocessing.Process):
+    """纯计算 Worker，从 task_queue 取任务，处理后将操作指令发往 reply_queue。"""
+
+    def __init__(self, task_queue, reply_queue, reply_mode="template",
+                 llm_model="deepseek-chat"):
+        super().__init__()
+        self._task_queue = task_queue
+        self._reply_queue = reply_queue
+        self._reply_mode = reply_mode
+        self._llm_model = llm_model
+        self.daemon = True
+        self._pending: dict[str, dict] = {}
+
+    def run(self):
+        self._init_worker()
+        logger.info("ReplyWorker 已就绪")
+        while True:
+            try:
+                task = self._task_queue.get()
+                if task is None:
+                    break
+            except (EOFError, OSError):
+                break
+
+            try:
+                self._process(task)
+            except Exception as e:
+                logger.error(f"Worker 处理异常: {e}")
+
+    def _init_worker(self):
+        from ..memory import Memory, JsonLinesBackend
+        from ..session import Session
+        from ..llm_client import LLMClient
+        from ..skill_manager import SkillManager
+        from ..skills import register_all_skills
+
+        self._memory = Memory(backend=JsonLinesBackend())
+        self._session = Session()
+        self._llm_client = LLMClient(model=self._llm_model)
+        self._skill_mgr = SkillManager()
+        register_all_skills(self._skill_mgr)
+        self._llm = self._llm_client if self._llm_client.available else None
+        self._rules = load_rules()
+
+    def _process(self, task):
+        chat_name = task["chat_name"]
+        preview = task.get("preview", "")
+        messages = task.get("messages", "")
+
+        pending_key = f"{PENDING_CONFIRM_PREFIX}{chat_name}"
+        if pending_key in self._pending:
+            self._handle_confirm_reply(task)
+            return
+
+        if chat_name == "文件传输助手":
+            confirm = _extract_confirm_info(messages or preview)
+            if confirm:
+                self._handle_confirm_response(confirm)
+            return
+
+        logger.info(f"Worker 处理 [{chat_name}]")
+
+        if self._reply_mode in ("llm", "llm_with_fallback"):
+            ok = self._process_llm(chat_name, messages, preview)
+            if not ok and self._reply_mode == "llm_with_fallback":
+                self._process_template(chat_name, task)
+        else:
+            self._process_template(chat_name, task)
+
+    def _process_template(self, chat_name, task):
+        reply_text = select_reply(self._rules)
+        if not reply_text:
+            logger.info(f"[{chat_name}] 无匹配模板回复，跳过")
+            return
+
+        if self._is_needs_confirm(chat_name):
+            self._pending[f"{PENDING_CONFIRM_PREFIX}{chat_name}"] = {
+                "reply_text": reply_text,
+                "click_y": task["position"]["y"],
+            }
+            self._reply_queue.put({
+                "action": "ask_confirm",
+                "chat_name": chat_name,
+                "reply_text": reply_text,
+            })
+        else:
+            self._reply_queue.put({
+                "action": "reply",
+                "chat_name": chat_name,
+                "click_y": task["position"]["y"],
+                "reply_text": reply_text,
+            })
+
+    def _process_llm(self, chat_name, messages, preview):
+        if not self._llm:
+            return False
+
+        system_prompt = "你是一个微信自动助手。根据收到的消息，选择合适的工具或直接回复。"
+        llm_messages = [{"role": "system", "content": system_prompt}]
+
+        history = self._memory.get_history(chat_name, limit=10)
+        for h in history:
+            llm_messages.append({"role": h["role"], "content": h.get("content", "")})
+
+        ctx = self._session.get_context(chat_name)
+        for c in ctx:
+            llm_messages.append(c)
+
+        llm_messages.append({"role": "user", "content": f"来自 [{chat_name}] 的消息:\n{messages or preview}"})
+
+        tools = self._skill_mgr.get_tools_spec() if self._skill_mgr else []
+
+        iteration = 0
+        try:
+            resp = self._llm.chat(llm_messages, tools=tools if tools else None)
+        except Exception as e:
+            logger.error(f"LLM 调用失败: {e}")
+            return False
+
+        while resp.get("type") == "tool_calls" and iteration < AGENT_MAX_TOOL_ITERATIONS:
+            iteration += 1
+            for tc in resp.get("tool_calls", []):
+                result = self._skill_mgr.execute(tc["name"], tc["arguments"])
+                llm_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": result,
+                })
+            llm_messages = self._session.intervene(chat_name, llm_messages)
+            try:
+                resp = self._llm.chat(llm_messages, tools=tools if tools else None)
+            except Exception as e:
+                logger.error(f"LLM 第 {iteration} 轮调用失败: {e}")
+                return False
+
+        reply = resp.get("content", "")
+        if not reply:
+            return False
+
+        self._memory.save_message(chat_name, "user", messages or preview)
+        self._memory.save_message(chat_name, "assistant", reply)
+        self._session.add_message(chat_name, "user", messages or preview)
+        self._session.add_message(chat_name, "assistant", reply)
+
+        self._reply_queue.put({
+            "action": "llm_reply",
+            "chat_name": chat_name,
+            "reply_text": reply,
+        })
+        return True
+
+    def _handle_confirm_reply(self, task):
+        pending_key = f"{PENDING_CONFIRM_PREFIX}{task['chat_name']}"
+        info = self._pending.pop(pending_key, None)
+        if info:
+            self._reply_queue.put({
+                "action": "reply",
+                "chat_name": task["chat_name"],
+                "click_y": info["click_y"],
+                "reply_text": info["reply_text"],
+            })
+
+    def _handle_confirm_response(self, confirm):
+        chat_name = confirm["chat_name"]
+        pending_key = f"{PENDING_CONFIRM_PREFIX}{chat_name}"
+        info = self._pending.pop(pending_key, None)
+        if info is None:
+            logger.warning(f"收到 [{chat_name}] 的确认回复，但无待确认记录")
+            return
+
+        if confirm["action"] == "agree":
+            self._reply_queue.put({
+                "action": "reply",
+                "chat_name": chat_name,
+                "click_y": info["click_y"],
+                "reply_text": info["reply_text"],
+            })
+        elif confirm["action"] == "reject":
+            logger.info(f"主人拒绝了 [{chat_name}] 的回复")
+        elif confirm["action"] == "modify" and confirm["modified_text"]:
+            self._reply_queue.put({
+                "action": "reply",
+                "chat_name": chat_name,
+                "click_y": info["click_y"],
+                "reply_text": confirm["modified_text"],
+            })
+
+    @staticmethod
+    def _is_needs_confirm(chat_name):
+        return False
+
+
+class MainLoop:
+    """UI 进程内的调度器：负责执行 reply 指令 + 截图识别 + 任务入队。"""
+
+    def __init__(self):
         self.rules = load_rules()
-
         self._seen_chats = {}
         self._processed_count = 0
         self._first_tick = True
-        self.reply_mode = ReplyMode.TEMPLATE
+        self.reply_mode = "template"
         self.auto_reply_enabled = True
+        self.current_processing = None
+
+        self._task_queue = multiprocessing.Queue()
+        self._reply_queue = multiprocessing.Queue()
+        self._worker = ReplyWorker(
+            task_queue=self._task_queue,
+            reply_queue=self._reply_queue,
+            reply_mode=self.reply_mode,
+        )
+
+    def start_worker(self):
+        if not self._worker.is_alive():
+            self._worker.start()
+            self._result_thread = threading.Thread(target=self._collect_results, daemon=True)
+            self._result_thread.start()
+            logger.info("Worker 已启动")
+
+    def stop_worker(self):
+        if self._worker.is_alive():
+            self._task_queue.put(None)
+            self._worker.join(timeout=3)
 
     def reset(self):
         self._seen_chats.clear()
         self._processed_count = 0
         self._first_tick = True
+        self.current_processing = None
 
     def reload_rules(self):
         self.rules = load_rules()
 
+    def _collect_results(self):
+        """后台线程：持续读取 reply_queue 的结果，更新 processed_count。"""
+        while True:
+            try:
+                instr = self._reply_queue.get()
+                if instr.get("action") in ("reply", "llm_reply"):
+                    self._processed_count += 1
+            except Exception:
+                break
+
     def tick(self):
         if not self.auto_reply_enabled:
-            return [], 0
+            return [], self._processed_count, self.current_processing
+
+        if not self._worker.is_alive():
+            logger.warning("Worker 未运行，启动 Worker")
+            self.start_worker()
+
+        self._consume_reply_queue()
 
         try:
-            unreads = get_unread_chats()    # unreads是数组，数组元素是带红点的联系人面板中的一项（联系人、时间、预览消息、坐标、索引）
+            unreads = get_unread_chats()
         except Exception as e:
             logger.error(f"检测未读异常: {e}")
-            return [], self._processed_count
+            return [], self._processed_count, self.current_processing
 
         if self._first_tick:
             self._first_tick = False
@@ -52,143 +312,68 @@ class AgentLoop:
                 self._seen_chats[m["chat_name"]] = m.get("preview", "")
             if unreads:
                 logger.info(f"首次发现 {len(unreads)} 个未读（已记录，本次不处理）")
-            return unreads, self._processed_count
+            return unreads, self._processed_count, self.current_processing
 
         for m in unreads:
             name = m["chat_name"]
             preview = m.get("preview", "")
 
             if name in self._seen_chats:
-                old = self._seen_chats[name]
-                if old == preview:
+                if self._seen_chats[name] == preview:
                     continue
                 logger.info(f"[{name}] 有新消息: {preview[:60]}")
 
             self._seen_chats[name] = preview
 
             if not should_auto_reply(name, self.rules):
-                logger.info(f"[{name}] 不在自动回复列表，保留红点不处理")
                 continue
 
-            logger.info(f"[{name}] 属于自动回复范围，开始处理")
-            ok = self._handle_one(name, m["item_index"], preview)
-            if ok:
-                self._processed_count += 1
+            logger.info(f"[{name}] 加入处理队列")
+            self.current_processing = name
+            self._task_queue.put(m)
 
-        return unreads, self._processed_count
+        return unreads, self._processed_count, self.current_processing
 
-    def _handle_one(self, chat_name, item_index, preview):
-        logger.info(f"处理 [{chat_name}] 的未读消息，预览: {preview[:60]}")
-        if self.reply_mode == ReplyMode.TEMPLATE:
-            logger.info(f"[{chat_name}] 模板匹配聊天模式启动.")
-            return self._handle_template(chat_name, item_index)
-        elif self.reply_mode == ReplyMode.LLM:
-            logger.info(f"[{chat_name}] LLM 聊天模式启动.")
-            return self._handle_llm(chat_name, item_index, preview)
-        elif self.reply_mode == ReplyMode.LLM_FALLBACK:
-            logger.info(f"[{chat_name}] LLM_FALLBACK 模式启动.")    
-            ok = self._handle_llm(chat_name, item_index, preview)
-            if not ok:
-                logger.info(f"[{chat_name}] LLM 回复失败，降级到模板匹配")
-                return self._handle_template(chat_name, item_index)
-            return ok
-        return False
-
-    def _handle_template(self, chat_name, item_index):
-        try:
-            ok = process_chat(chat_name, item_index, self.rules)
-        except Exception as e:
-            logger.error(f"处理 [{chat_name}] 时出错: {e}")
-            return False
-        if ok and self.memory:
-            self.memory.save_message(chat_name, "assistant", select_reply(self.rules) or "(已回复)")
-        if ok and self.session:
-            self.session.add_message(chat_name, "assistant", select_reply(self.rules) or "(已回复)")
-        return ok
-
-    def _handle_llm(self, chat_name, item_index, preview):
-        if not self.llm_client:
-            logger.warning("LLM 客户端未初始化，跳过 LLM 回复")
-            return False
-
-        from ..skills.auto_reply_skill import click_chat_by_index, read_chat_area, send_reply
-        from ..skills.window_skill import activate_window
-        from ..config import WECHAT_WINDOW_TITLE, WECHAT_WINDOW_CLSNAME
-
-        import time
-        if not activate_window(WECHAT_WINDOW_TITLE, WECHAT_WINDOW_CLSNAME):
-            return False
-        time.sleep(0.5)
-        if not click_chat_by_index(item_index):
-            return False
-
-        messages = read_chat_area()
-        if not messages:
-            logger.warning("未读取到聊天消息")
-            return False
-
-        system_prompt = "你是一个微信自动助手。根据收到的消息，选择合适的工具或直接回复。"
-        llm_messages = [{"role": "system", "content": system_prompt}]
-
-        if self.memory:
-            history = self.memory.get_history(chat_name, limit=10)
-            for h in history:
-                llm_messages.append({"role": h["role"], "content": h.get("content", "")})
-
-        if self.session:
-            ctx = self.session.get_context(chat_name)
-            for c in ctx:
-                llm_messages.append(c)
-
-        llm_messages.append({"role": "user", "content": f"来自 [{chat_name}] 的消息:\n{messages}"})
-
-        tools = []
-        if self.skill_manager:
-            tools = self.skill_manager.get_tools_spec()
-
-        iteration = 0
-        max_iterations = AGENT_MAX_TOOL_ITERATIONS
-
-        try:
-            resp = self.llm_client.chat(llm_messages, tools=tools if tools else None)
-        except Exception as e:
-            logger.error(f"LLM 调用失败: {e}")
-            return False
-
-        while resp["type"] == "tool_calls" and iteration < max_iterations:
-            iteration += 1
-            for tc in resp["tool_calls"]:
-                result = self.skill_manager.execute(tc["name"], tc["arguments"])
-                llm_messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": result,
-                })
-            if self.session:
-                llm_messages = self.session.intervene(chat_name, llm_messages)
+    def _consume_reply_queue(self):
+        """消费 reply_queue 中的所有待执行指令（非阻塞）。"""
+        while True:
             try:
-                resp = self.llm_client.chat(llm_messages, tools=tools if tools else None)
+                instr = self._reply_queue.get_nowait()
+            except Empty:
+                break
+
+            action = instr.get("action", "")
+            logger.info(f"执行 reply 指令: {action} -> {instr.get('chat_name', '')}")
+
+            try:
+                if action in ("reply", "llm_reply"):
+                    self._execute_reply(instr)
+                elif action == "ask_confirm":
+                    self._execute_ask_confirm(instr)
             except Exception as e:
-                logger.error(f"LLM 第 {iteration} 轮调用失败: {e}")
-                return False
+                logger.error(f"执行指令失败 {action}: {e}")
 
-        if iteration >= max_iterations:
-            logger.warning(f"LLM tool 调用达到上限 {max_iterations}，取当前结果")
+    def _execute_reply(self, instr):
+        """执行回复操作：点击联系人 → 发送消息。"""
+        click_y = instr.get("click_y")
+        if click_y is not None:
+            click_chat_by_position({"y": click_y})
+        chat_name = instr.get("chat_name", "")
+        reply_text = instr.get("reply_text", "")
+        if reply_text:
+            from ..skills.auto_reply_skill import send_reply
+            send_reply(reply_text)
+            logger.info(f"已回复 [{chat_name}]: {reply_text[:60]}")
+        self.current_processing = None
 
-        reply = resp.get("content", "")
-
-        if not reply:
-            return False
-
-        if not send_reply(reply):
-            return False
-
-        if self.memory:
-            self.memory.save_message(chat_name, "user", messages)
-            self.memory.save_message(chat_name, "assistant", reply)
-
-        if self.session:
-            self.session.add_message(chat_name, "user", messages)
-            self.session.add_message(chat_name, "assistant", reply)
-
-        return True
+    def _execute_ask_confirm(self, instr):
+        """执行确认请求：找到文件传输助手 → 发送确认消息。"""
+        chat_name = instr.get("chat_name", "")
+        reply_text = instr.get("reply_text", "")
+        helper_y = find_file_helper_y()
+        if helper_y is not None:
+            send_confirm_request(helper_y, chat_name, reply_text)
+            logger.info(f"已向主人发送确认请求: [{chat_name}] -> {reply_text[:60]}")
+            self.current_processing = f"待确认: {chat_name}"
+        else:
+            logger.warning("未找到文件传输助手，无法发送确认请求")
