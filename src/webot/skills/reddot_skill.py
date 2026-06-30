@@ -19,14 +19,19 @@ from ..config import (
     RED_DOT_AREA_MIN2,
     RED_DOT_AREA_MAX2,
     RED_DOT_OFFSET_X,
-    RED_DOT_OFFSET_Y,   
+    RED_DOT_OFFSET_Y,
     RED_DOT_HUE_LOW1,
     RED_DOT_HUE_HIGH1,
     RED_DOT_HUE_LOW2,
     RED_DOT_HUE_HIGH2,
+    OCR_CONFIDENCE_THRESHOLD,
+    IMG_SHORTCUTS,
+    SHORTCUTS_CENTER_TO_LIST_RIGHT,
+    CONFIDENCE_LEVEL,
 )
 from ..utils import get_logger
 from .base import Skill
+from .cursor_pos_calculate_skill import calculate_cursor_position
 
 logger = get_logger(__name__)
 
@@ -62,11 +67,25 @@ def capture_chat_list_region():
     left, top, right, bottom = rect
     cw = right - left
     ch = bottom - top
-    list_w = int(cw * CHAT_LIST_WIDTH_RATIO)
+
+    # 用 shortcuts 按钮动态计算聊天列表右边界
+    list_right = None
+    result = calculate_cursor_position(IMG_SHORTCUTS, confidence=CONFIDENCE_LEVEL)
+    if result["found"]:
+        button_cx = result["x"]
+        list_right = int(button_cx) + SHORTCUTS_CENTER_TO_LIST_RIGHT
+        logger.info(f"shortcuts 按钮中心 x={button_cx}, 列表右边界={list_right}")
+    else:
+        logger.warning("shortcuts 按钮未找到，使用固定比例")
+
+    if list_right is None:
+        list_w = int(cw * CHAT_LIST_WIDTH_RATIO)
+        list_right = left + list_w
+
     region = (
         left + CHAT_LIST_TAB_WIDTH,
         top + CHAT_LIST_TOP_OFFSET,
-        list_w - CHAT_LIST_TAB_WIDTH,
+        list_right - (left + CHAT_LIST_TAB_WIDTH),
         ch - CHAT_LIST_TOP_OFFSET,
     )
 
@@ -83,28 +102,6 @@ def capture_chat_list_region():
     # logger.info(f"聊天列表截图已保存: {debug_path}")
 
     return bgr
-
-# def detect_red_dots(bgr_img):
-#     hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
-#     mask1 = cv2.inRange(hsv, np.array([RED_DOT_HUE_LOW1, RED_DOT_SAT_MIN, RED_DOT_VAL_MIN]),
-#                         np.array([RED_DOT_HUE_HIGH1, 255, 255]))
-#     mask2 = cv2.inRange(hsv, np.array([RED_DOT_HUE_LOW2, RED_DOT_SAT_MIN, RED_DOT_VAL_MIN]),
-#                         np.array([RED_DOT_HUE_HIGH2, 255, 255]))
-#     mask = cv2.bitwise_or(mask1, mask2)
-#     kernel = np.ones((3, 3), np.uint8)
-#     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-
-#     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#     dots = []
-#     for c in contours:
-#         area = cv2.contourArea(c)
-#         if RED_DOT_AREA_MIN <= area <= RED_DOT_AREA_MAX or RED_DOT_AREA_MIN2 <= area <= RED_DOT_AREA_MAX2:
-#             M = cv2.moments(c)
-#             if M["m00"] != 0:
-#                 cx = int(M["m10"] / M["m00"])
-#                 cy = int(M["m01"] / M["m00"])
-#                 dots.append((cx, cy, area))
-#     return dots
 
 def detect_red_dots(bgr_img, draw_result=False):
     hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
@@ -158,16 +155,10 @@ def detect_red_dots(bgr_img, draw_result=False):
     
     return dots
 
-def _infer_item_index(y):
-    return y // CHAT_ITEM_HEIGHT
-
-
 def ocr_chat_list(bgr_img):
     ocr = get_ocr_engine()
-    # 注意：PaddleOCR 内部通常期望 RGB 格式，而 OpenCV 读取的是 BGR
-    # 建议先转换颜色通道，避免识别结果偏色或准确率下降
     rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
-    result = ocr.predict(input=rgb_img)   # 直接传入 numpy 数组
+    result = ocr.predict(input=rgb_img)
 
     if not result:
         return []
@@ -179,172 +170,99 @@ def ocr_chat_list(bgr_img):
 
     items = []
     for box, text, score in zip(boxes, texts, scores):
+        if score < OCR_CONFIDENCE_THRESHOLD:
+            continue
         x1, y1, x2, y2 = box
         cx = (x1 + x2) / 2
         cy = (y1 + y2) / 2
-        idx = _infer_item_index(cy)
-        if idx is not None:
-            items.append({
-                "text": text,
-                "score": score,
-                "box": box,
-                "cx": cx,
-                "cy": cy,
-                "item_index": idx,
-            })
+        items.append({
+            "text": text,
+            "score": score,
+            "box": box,
+            "cx": cx,
+            "cy": cy,
+        })
     return items
-    # ocr = get_ocr_engine()
-    # tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-    # tmp_path = tmp.name
-    # tmp.close()
-    # try:
-    #     cv2.imwrite(tmp_path, bgr_img)
-    #     result = ocr.predict(input=tmp_path)
-    # finally:
-    #     os.unlink(tmp_path)
-
-    # if not result:
-    #     return []
-
-    # page = result[0]
-    # boxes = page.get("rec_boxes", [])
-    # texts = page.get("rec_texts", [])
-    # scores = page.get("rec_scores", [])
-
-    # items = []
-    # for box, text, score in zip(boxes, texts, scores):
-    #     x1, y1, x2, y2 = box
-    #     cx = (x1 + x2) / 2
-    #     cy = (y1 + y2) / 2
-    #     idx = _infer_item_index(cy)
-    #     if idx is not None:
-    #         items.append({
-    #             "text": text,
-    #             "score": score,
-    #             "box": box,
-    #             "cx": cx,
-    #             "cy": cy,
-    #             "item_index": idx,
-    #         })
-    # return items
 
 
 def group_items_by_chat(items):
-    groups = {}
-    for it in items:
-        idx = it["item_index"]
-        groups.setdefault(idx, []).append(it)
-
-    sorted_groups = []
-    for idx in sorted(groups.keys()):
-        sorted_groups.append((idx, groups[idx]))
-    return sorted_groups
-
-
-# def match_red_dots_to_items(red_dots, sorted_groups):
-#     red_by_idx = {}
-#     for cx, cy, area in red_dots:
-#         idx = _infer_item_index(cy)
-#         if idx is not None:
-#             red_by_idx.setdefault(idx, []).append((cx, cy, area))
-
-#     result = []
-#     for idx, items in sorted_groups:
-#         name = ""
-#         preview = ""
-#         for it in items:
-#             if not name:
-#                 name = it["text"]
-#             elif it["cy"] > items[0]["cy"] + 15:
-#                 if not preview:
-#                     preview = it["text"]
-#         count = len(red_by_idx.get(idx, []))
-#         if count > 0:
-#             result.append({
-#                 "chat_name": name,
-#                 "preview": preview,
-#                 "unread_count": count,
-#                 "item_index": idx,
-#             })
-#     return result
+    if not items:
+        return []
+    sorted_items = sorted(items, key=lambda x: x["cy"])
+    groups = []
+    current = [sorted_items[0]]
+    for it in sorted_items[1:]:
+        if it["cy"] - current[-1]["cy"] < CHAT_ITEM_HEIGHT:
+            current.append(it)
+        else:
+            groups.append(current)
+            current = [it]
+    if current:
+        groups.append(current)
+    return list(enumerate(groups))
 
 def match_red_dots_to_items(red_dots, sorted_groups):
-    # 收集所有红点坐标（只取前两个值）
     red_dot_points = [(x, y) for x, y, _ in red_dots]
-    
-    # 用于存储每个分组中匹配的项
-    filtered_result = []
-    
-    for idx, items in sorted_groups:
-        # 检查当前分组中的每个item
-        matched_items = []
-        preview = ''
-        for it in items:
-            # 获取box坐标 [x1, y1, x2, y2]
+    result = []
+
+    for idx, group in sorted_groups:
+        sorted_items = sorted(group, key=lambda x: x["cy"])
+        # 找到第一个被红点命中的文字块（按从上到下顺序）
+        name = None
+        position = None
+        hit_index = -1
+        for i, it in enumerate(sorted_items):
             box = it.get("box")
             if len(box) < 4:
                 continue
             x1, y1, x2, y2 = box
-            
-            # 检查是否有任何红点落在该box内
-            point_in_box = False
             for px, py in red_dot_points:
                 if x1 <= px <= x2 and y1 <= py <= y2:
-                    point_in_box = True
-                    preview = f'(x = {px}, y = {py})'  # 记录第一个匹配的红点坐标作为预览（仅供调试）
-                    break
-            
-            if point_in_box:
-                matched_items.append(it)
-        
-        # 如果有匹配的item，才保留这个分组
-        if matched_items:
-            # 提取名称和预览（使用原逻辑）
-            name = ""
-            for it in matched_items:
-                if not name:
                     name = it["text"]
-                elif it.get("cy", 0) > matched_items[0].get("cy", 0) + 15:
-                    if not preview:
-                        preview = it["text"]
-            
-            # 计算该分组中匹配的红点数量
-            count = 0
-            for px, py in red_dot_points:
-                for it in matched_items:
-                    box = it.get("box")
-                    if len(box) >= 4:
-                        x1, y1, x2, y2 = box
-                        if x1 <= px <= x2 and y1 <= py <= y2:
-                            count += 1
-                            break
-            
-            if count > 0:
-                filtered_result.append({
-                    "chat_name": name,
-                    "preview": preview,
-                    "unread_count": count,
-                    "item_index": idx,
-                })
-    
-    return filtered_result
+                    position = {"x": px, "y": py}
+                    hit_index = i
+                    break
+            if name is not None:
+                break
+
+        if name is None:
+            continue
+
+        # 被命中文字块的下一个文字块作为时间
+        time = ""
+        if hit_index + 1 < len(sorted_items):
+            time = sorted_items[hit_index + 1]["text"]
+        # 被命中文字块的下两个文字块作为时间
+        preview = ""
+        if hit_index + 2 < len(sorted_items):
+            preview = sorted_items[hit_index + 2]["text"]
+
+        result.append({
+            "chat_name": name,
+            "time": time,
+            "preview": preview,
+            "item_index": idx,
+            "position": position,
+        })
+
+    return result
 
 def get_unread_chats():
-    img = capture_chat_list_region() # 这个图片是微信窗口左边0，下90（让开搜索和我），0.3宽度的区域
+    img = capture_chat_list_region()    # 这个区域是图片是微信窗口左边0，并通过识别微信联系人面板上面的搜索框右侧"+"图标位置计算得到。
     if img is None:
         return []
 
-    dots = detect_red_dots(img)
+    dots = detect_red_dots(img)         # 这个红点返回值是向右下偏移了RED_DOT_OFFSET_X (Y)的位置
     if not dots:
         logger.debug("未检测到红点")
         return []
 
-    items = ocr_chat_list(img)
+    items = ocr_chat_list(img)          # 联系人面板内所有文字识别结果
     if not items:
         logger.warning("聊天列表 OCR 未返回任何文本")
         return []
 
-    groups = group_items_by_chat(items)
+    groups = group_items_by_chat(items) # 按照每个识别文字块纵向距离进行分组，这样每个组就是一个聊天联系人，包含姓名、时间、预览
     matched = match_red_dots_to_items(dots, groups)
     if matched:
         names = [m["chat_name"] for m in matched]

@@ -41,7 +41,7 @@ class AgentLoop:
             return [], 0
 
         try:
-            unreads = get_unread_chats()
+            unreads = get_unread_chats()    # unreads是数组，数组元素是带红点的联系人面板中的一项（联系人、时间、预览消息、坐标、索引）
         except Exception as e:
             logger.error(f"检测未读异常: {e}")
             return [], self._processed_count
