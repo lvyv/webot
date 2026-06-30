@@ -77,10 +77,10 @@ class ReplyWorker(multiprocessing.Process):
                 logger.error(f"Worker 处理异常: {e}")
 
     def _init_worker(self):
-        from ..memory import Memory, JsonLinesBackend
-        from ..session import Session
-        from ..llm_client import LLMClient
-        from ..skill_manager import SkillManager
+        from .memory import Memory, JsonLinesBackend
+        from .session import Session
+        from .llm_client import LLMClient
+        from .skill_manager import SkillManager
         from ..skills import register_all_skills
 
         self._memory = Memory(backend=JsonLinesBackend())
@@ -260,11 +260,17 @@ class MainLoop:
         )
 
     def start_worker(self):
-        if not self._worker.is_alive():
-            self._worker.start()
-            self._result_thread = threading.Thread(target=self._collect_results, daemon=True)
-            self._result_thread.start()
-            logger.info("Worker 已启动")
+        if self._worker.is_alive():
+            return
+        self._worker = ReplyWorker(
+            task_queue=self._task_queue,
+            reply_queue=self._reply_queue,
+            reply_mode=self.reply_mode,
+        )
+        self._worker.start()
+        self._result_thread = threading.Thread(target=self._collect_results, daemon=True)
+        self._result_thread.start()
+        logger.info("Worker 已启动")
 
     def stop_worker(self):
         if self._worker.is_alive():
