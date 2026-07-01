@@ -11,6 +11,7 @@ from ..skills.auto_reply_skill import (
     should_auto_reply,
     select_reply,
     click_chat_by_position,
+    read_chat_area,
     find_file_helper_y,
     send_confirm_request,
 )
@@ -334,9 +335,23 @@ class MainLoop:
             if not should_auto_reply(name, self.rules):
                 continue
 
-            logger.info(f"[{name}] 加入处理队列")
+            # 在 UI 进程执行微信操作：点击联系人 → 读取聊天记录
+            logger.info(f"[{name}] 读取聊天记录")
             self.current_processing = name
-            self._task_queue.put(m)
+            if not click_chat_by_position(m["position"]):
+                logger.warning(f"[{name}] 点击失败，跳过")
+                self.current_processing = None
+                continue
+            time.sleep(0.5)
+            messages = read_chat_area()
+            if messages:
+                logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")
+            else:
+                logger.warning(f"[{name}] 未读取到聊天消息")
+
+            # 把聊天内容连同任务信息一起发给 Worker 处理
+            task = {**m, "messages": messages}
+            self._task_queue.put(task)
 
         return unreads, self._processed_count, self.current_processing
 
