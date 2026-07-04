@@ -30,21 +30,11 @@ from ..utils import (
     CONFIDENCE_LEVEL,
 )
 from ..utils import get_logger
+from ..utils.ocr import get_ocr_engine
 from .base import Skill
 from .cursor_pos_calculate_skill import calculate_cursor_position
 
 logger = get_logger(__name__)
-
-
-_ocr_engine = None
-
-
-def get_ocr_engine():
-    global _ocr_engine
-    if _ocr_engine is None:
-        from paddleocr import PaddleOCR
-        _ocr_engine = PaddleOCR(use_doc_unwarping=False)
-    return _ocr_engine
 
 
 def get_wechat_rect():

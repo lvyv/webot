@@ -3,9 +3,12 @@ import threading
 import time
 from queue import Empty
 
-from ..utils import AGENT_POLL_INTERVAL, AGENT_MAX_TOOL_ITERATIONS
+from webot.utils import config
+
+from ..utils import AGENT_POLL_INTERVAL, AGENT_MAX_TOOL_ITERATIONS, WECHAT_WINDOW_TITLE
 from ..utils import get_logger
 from ..skills.reddot_skill import get_unread_chats
+from ..skills.window_skill import minimize_window
 from ..skills.auto_reply_skill import (
     load_rules,
     should_auto_reply,
@@ -342,7 +345,9 @@ class MainLoop:
                 logger.warning(f"[{name}] 点击失败，跳过")
                 self.current_processing = None
                 continue
+            
             time.sleep(0.5)
+            minimize_window(config.APP_NAME)
             messages = read_chat_area()
             if messages:
                 logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")

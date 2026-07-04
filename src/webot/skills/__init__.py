@@ -12,7 +12,16 @@ from .auto_reply_skill import (
     find_file_helper_y, send_confirm_request,
     ProcessChatSkill, SendReplySkill, ClickChatSkill,
 )
+from .panel_rect_skill import (
+    get_title_bar_rect,
+    get_left_toolbar_rect,
+    get_search_bar_rect,
+    get_contact_list_rect,
+    get_chat_history_rect,
+    get_message_input_rect,
+)
 from .cursor_pos_calculate_skill import calculate_cursor_position, CalculateCursorPositionSkill
+from .scroll_diff_skill import capture_scroll_diff, CaptureScrollDiffSkill
 from .base import Skill
 from ..agent.skill_manager import SkillManager
 
@@ -30,6 +39,7 @@ def register_all_skills(mgr):
     mgr.register(ProcessChatSkill())
     mgr.register(SendReplySkill())
     mgr.register(ClickChatSkill())
+    mgr.register(CaptureScrollDiffSkill())
 
 __all__ = [
     "click_ui_element", "ClickUiElementSkill",
@@ -44,6 +54,10 @@ __all__ = [
     "select_reply", "click_chat_by_position", "read_chat_area", "send_reply",
     "find_file_helper_y", "send_confirm_request",
     "ProcessChatSkill", "SendReplySkill", "ClickChatSkill",
+    "get_title_bar_rect", "get_left_toolbar_rect",
+    "get_search_bar_rect", "get_contact_list_rect",
+    "get_chat_history_rect", "get_message_input_rect",
     "calculate_cursor_position", "CalculateCursorPositionSkill",
+    "capture_scroll_diff", "CaptureScrollDiffSkill",
     "Skill", "register_all_skills",
 ]

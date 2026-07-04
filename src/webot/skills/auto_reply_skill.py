@@ -8,7 +8,8 @@ import numpy as np
 import pyautogui
 
 from .window_skill import activate_window
-from .reddot_skill import get_wechat_rect, get_ocr_engine, get_unread_chats
+from .reddot_skill import get_wechat_rect, get_unread_chats
+from ..utils.ocr import get_ocr_engine
 from ..utils import (
     WECHAT_WINDOW_TITLE,
     WECHAT_WINDOW_CLSNAME,

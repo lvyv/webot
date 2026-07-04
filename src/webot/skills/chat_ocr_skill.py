@@ -7,6 +7,7 @@ import glob
 import os
 from ..utils import CHAT_REGION_THRESHOLD, CHAT_MIN_CONTOUR_AREA, CHAT_BLEND_WIDTH, OCR_CONFIDENCE_THRESHOLD
 from ..utils import get_logger
+from ..utils.ocr import get_ocr_engine
 from .base import Skill
 
 logger = get_logger(__name__)
@@ -214,10 +215,9 @@ def stitch_images(cropped_paths, output_path, blend_width=CHAT_BLEND_WIDTH):
 
 
 def ocr_image(image_path, output_dir, conf_threshold=OCR_CONFIDENCE_THRESHOLD):
-    from paddleocr import PaddleOCR
     import json
 
-    ocr = PaddleOCR(use_doc_unwarping=False)
+    ocr = get_ocr_engine()
     result = ocr.predict(input=image_path)
 
     os.makedirs(output_dir, exist_ok=True)

@@ -5,18 +5,20 @@ import pyautogui
 import logging
 from importlib.resources import files, as_file
 from .config import FAILSAFE_ENABLED
+from webot.utils import config
 
 pyautogui.FAILSAFE = FAILSAFE_ENABLED
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARN,
     format='%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-logging.getLogger().setLevel(logging.INFO)
 
 
-def get_logger(name):
+def get_logger(name=None):
+    if name is None:
+        name = config.APP_NAME
     return logging.getLogger(name)
 
 

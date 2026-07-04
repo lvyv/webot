@@ -19,7 +19,7 @@ from ..skills import (
     GetUnreadChatsSkill, ProcessChatSkill, SendReplySkill, ClickChatSkill,
 )
 from ..skills.recording_skill import RecordingManager
-from ..command_parser import CommandParser
+from .command_parser import CommandParser
 from ..utils import get_logger, get_image_path
 from ..conf import RULES_PATH
 
@@ -43,7 +43,7 @@ class QTextEditHandler(logging.Handler):
 class WebotWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Webot 助手")
+        self.setWindowTitle(config.APP_NAME)
         self.setWindowIcon(QIcon(get_image_path("webot.png")))
         self.setGeometry(600, 100, 400, 500)
         self.setWindowOpacity(0.85)
@@ -113,9 +113,7 @@ class WebotWindow(QMainWindow):
         layout.addSpacing(8)
         self._setup_log_panel(layout)
 
-        webot_logger = logging.getLogger('webot')
-        webot_logger.setLevel(logging.INFO)
-        webot_logger.addHandler(QTextEditHandler(self.log_output))
+        logger.addHandler(QTextEditHandler(self.log_output))
 
     def _setup_agent_panel(self, parent_layout):
         group = QGroupBox("Agent 监控")
@@ -311,7 +309,7 @@ class WebotWindow(QMainWindow):
         activate_window(config.WECHAT_WINDOW_TITLE, config.WECHAT_WINDOW_CLSNAME)
         click_ui_element(get_image_path(config.BTN_CONTACTS_IMAGE))
         find_and_input_text(
-            get_image_path(config.INPUT_SEARCH_CONTACT),
+            get_image_path(config.IMG_INPUT_SEARCH_CONTACT),
             name, send_enter=True,
         )
         logger.info(f"联系人 [{name}] 已搜索并打开")
@@ -323,7 +321,7 @@ class WebotWindow(QMainWindow):
         activate_window(config.WECHAT_WINDOW_TITLE, config.WECHAT_WINDOW_CLSNAME)
         click_ui_element(get_image_path(config.BTN_CONTACTS_IMAGE))
         find_and_input_text(
-            get_image_path(config.INPUT_SEARCH_CONTACT),
+            get_image_path(config.IMG_INPUT_SEARCH_CONTACT),
             contact, send_enter=True,
         )
         find_and_input_text(

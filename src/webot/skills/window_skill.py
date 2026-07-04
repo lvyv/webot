@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # skills/window_skill.py
 
+import time
+
 import pyautogui
 import pygetwindow as gw
 import ctypes
@@ -15,7 +17,7 @@ SW_SHOWMAXIMIZED = 3
 # RDW_UPDATENOW = 0x0100
 # RDW_ALLCHILDREN = 0x0080
 
-def activate_window(window_title, CLASS_NAME):
+def activate_window(window_title, CLASS_NAME, delay=config.RETRY_DELAY):
     try:
         pyautogui.hotkey("ctrl", "alt", "w")        
         windows = gw.getWindowsWithTitle(window_title)
@@ -31,6 +33,7 @@ def activate_window(window_title, CLASS_NAME):
         user32.ShowWindow(hwnd, SW_SHOWMAXIMIZED)
         user32.SetForegroundWindow(hwnd)
         user32.BringWindowToTop(hwnd)
+        time.sleep(delay)  # 等待窗口激活
         logger.info("已激活微信")
         return True
     except Exception as e:
@@ -38,18 +41,45 @@ def activate_window(window_title, CLASS_NAME):
         return False
 
 
-def resize_window(window_title, width, height):
+def resize_window(window_title, width, height, delay=config.RETRY_DELAY):
     windows = gw.getWindowsWithTitle(window_title)
     if windows:
         win = windows[0]
         win.resizeTo(width, height)
         logger.info(f"窗口已调整: {window_title} -> {width}x{height}")
+        time.sleep(delay)  # 等待窗口调整完成
         return True
     logger.error(f"调整大小失败，未找到窗口: {window_title}")
     return False
 
 
-def maximize_window(window_title):
+def minimize_window(window_title, delay=config.RETRY_DELAY):
+    """
+    最小化指定标题的窗口。
+
+    Args:
+        window_title (str): 窗口标题（支持模糊匹配）
+
+    Returns:
+        bool: 成功返回 True，失败返回 False
+    """
+    windows = gw.getWindowsWithTitle(window_title)
+    if windows:
+        win = windows[0]
+        try:
+            win.minimize()
+            time.sleep(delay)
+            logger.info(f"窗口已最小化: {window_title}")
+            return True
+        except Exception as e:
+            logger.error(f"最小化窗口失败: {window_title}, 错误: {e}")
+            return False
+    else:
+        logger.error(f"最小化失败，未找到窗口: {window_title}")
+        return False
+
+
+def maximize_window(window_title, delay=config.RETRY_DELAY):
     """
     最大化指定标题的窗口。
 
@@ -64,6 +94,7 @@ def maximize_window(window_title):
         win = windows[0]
         try:
             win.maximize()
+            time.sleep(delay)  # 等待窗口最大化完成
             logger.info(f"窗口已最大化: {window_title}")
             return True
         except Exception as e:
@@ -73,18 +104,19 @@ def maximize_window(window_title):
         logger.error(f"最大化失败，未找到窗口: {window_title}")
         return False
 
-def move_window(window_title, x, y):
+def move_window(window_title, x, y, delay=config.RETRY_DELAY):
     windows = gw.getWindowsWithTitle(window_title)
     if not windows:
         logger.error(f"未找到窗口: {window_title}")
         return False
     win = windows[0]
     win.moveTo(x, y)
+    time.sleep(delay)  # 等待窗口移动完成
     logger.info(f"窗口已移动: {window_title} -> ({x}, {y})")
     return True
 
 
-def center_window(window_title):
+def center_window(window_title, delay=config.RETRY_DELAY):
     windows = gw.getWindowsWithTitle(window_title)
     if not windows:
         logger.error(f"未找到窗口: {window_title}")
@@ -94,6 +126,7 @@ def center_window(window_title):
     x = (screen_w - win.width) // 2
     y = (screen_h - win.height) // 2
     win.moveTo(x, y)
+    time.sleep(delay)  # 等待窗口居中完成
     logger.info(f"窗口已居中: {window_title}")
     return True
 

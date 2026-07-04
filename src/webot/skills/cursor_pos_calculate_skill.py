@@ -15,7 +15,7 @@ def calculate_cursor_position(image_path, confidence=CONFIDENCE_LEVEL,
                 region=region,
             )
             if location:
-                logger.info(f"定位成功: {image_path} -> ({location.x}, {location.y})")
+                # logger.info(f"定位成功: {image_path} -> ({location.x}, {location.y})")
                 return {"x": location.x, "y": location.y, "found": True}
             else:
                 logger.warning(f"尝试 {attempt}/{retry} 未找到: {image_path}")
