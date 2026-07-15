@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 import time
 from datetime import datetime
 
@@ -7,8 +8,13 @@ import cv2
 import numpy as np
 import pyautogui
 
-from .window_skill import activate_window
+from webot.utils import config
+
+from .window_skill import hide_window, show_window
 from .reddot_skill import get_wechat_rect, get_unread_chats
+from .panel_rect_skill import get_chat_history_rect
+from .scroll_skill import scroll_repeatedly
+from .chat_ocr_skill import stitch_images
 from ..utils.ocr import get_ocr_engine
 from ..utils import (
     WECHAT_WINDOW_TITLE,
@@ -17,6 +23,7 @@ from ..utils import (
     CHAT_ITEM_HEIGHT,
     CHAT_LIST_TOP_OFFSET,
     CHAT_LIST_TAB_WIDTH,
+    OCR_CONFIDENCE_THRESHOLD,
 )
 from ..utils import get_logger
 from .base import Skill
@@ -95,31 +102,18 @@ def select_reply(rules):
 
 def click_chat_by_position(position):
     """基于红点 position（截图相对坐标）点击聊天项。"""
-    rect = get_wechat_rect()
-    if rect is None:
-        return False
-
-    left, top, right, bottom = rect
-    cw = right - left
-    list_w = int(cw * CHAT_LIST_WIDTH_RATIO)
-
-    region_x = left + CHAT_LIST_TAB_WIDTH
-    region_y = top + CHAT_LIST_TOP_OFFSET
-    region_w = list_w - CHAT_LIST_TAB_WIDTH
-
-    cx = region_x + region_w // 2
-    cy = region_y + position["y"]
-
+    cx = position['x']
+    cy = position['y']
     pyautogui.click(cx, cy)
     logger.info(f"点击聊天项 (屏幕坐标: {cx}, {cy})")
-    time.sleep(1.0)
+    time.sleep(0.5)
     return True
 
 
 def find_file_helper_y():
     """在聊天列表中寻找"文件传输助手"的 y 坐标（截图相对）。"""
     from .reddot_skill import capture_chat_list_region, ocr_chat_list, group_items_by_chat
-    img = capture_chat_list_region()
+    img, _, _ = capture_chat_list_region()
     if img is None:
         return None
     items = ocr_chat_list(img)
@@ -154,34 +148,63 @@ def send_confirm_request(helper_y, chat_name, reply_text):
     return send_reply(confirm_msg)
 
 
-def read_chat_area():
-    rect = get_wechat_rect()
+def read_chat_area(scroll_times=0, scroll_amount=30):
+    """读取当前选中的聊天区域内容。
+
+    Args:
+        scroll_times: 向上滚动次数（用于读取更多历史消息）
+        scroll_amount: 每次滚动量
+
+    Returns:
+        拼接后的聊天文本
+    """
+    rect = get_chat_history_rect()
     if rect is None:
+        logger.warning("无法获取聊天历史区域")
         return ""
 
-    left, top, right, bottom = rect
-
-    list_w = int((right - left) * CHAT_LIST_WIDTH_RATIO)
-    msg_left = left + list_w
-    msg_top = top + 120
-    msg_right = right - 10
-    msg_bottom = bottom - 150
-
-    if msg_right <= msg_left or msg_bottom <= msg_top:
-        logger.warning("聊天区域尺寸无效")
+    region = (rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1])
+    if region[2] <= 0 or region[3] <= 0:
+        logger.warning("聊天历史区域尺寸无效")
         return ""
 
-    region = (msg_left, msg_top, msg_right - msg_left, msg_bottom - msg_top)
-
+    screenshots = []
     try:
         pil_img = pyautogui.screenshot(region=region)
+        screenshots.append(cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR))
     except OSError:
         logger.error("截取聊天区域失败")
         return ""
 
-    bgr = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-    tmp = os.path.join(os.environ.get("TEMP", "."), "webot_chat_area.png")
-    cv2.imwrite(tmp, bgr)
+    for _ in range(scroll_times):
+        scroll_repeatedly(amount=scroll_amount, times=1, direction="up")
+        time.sleep(0.3)
+        try:
+            pil_img = pyautogui.screenshot(region=region)
+            screenshots.append(cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR))
+        except OSError:
+            break
+
+    if len(screenshots) == 0:
+        return ""
+
+    if len(screenshots) > 1:
+        tmp_dir = tempfile.mkdtemp(prefix="webot_chat_")
+        paths = []
+        for i, img in enumerate(screenshots):
+            p = os.path.join(tmp_dir, f"frame_{i}.png")
+            cv2.imwrite(p, img)
+            paths.append(p)
+        stitched_path = os.path.join(tmp_dir, "stitched.png")
+        stitch_images(paths, stitched_path)
+        final_img = cv2.imread(stitched_path)
+        if final_img is None:
+            final_img = screenshots[0]
+    else:
+        final_img = screenshots[0]
+
+    tmp = os.path.join(tempfile.gettempdir(), "webot_chat_area_final.png")
+    cv2.imwrite(tmp, final_img)
 
     ocr = get_ocr_engine()
     result = ocr.predict(input=tmp)
@@ -192,9 +215,49 @@ def read_chat_area():
     page = result[0]
     texts = page.get("rec_texts", [])
     scores = page.get("rec_scores", [])
-    lines = [t for t, s in zip(texts, scores) if s >= 0.5]
+    lines = [t for t, s in zip(texts, scores) if s >= OCR_CONFIDENCE_THRESHOLD]
 
     return "\n".join(lines)
+
+
+def process_single_chat(m, scroll_times=0, scroll_amount=30):
+    """封装点击联系人 + 读取聊天记录的操作。
+
+    Args:
+        m: 聊天联系人信息 dict，需包含 chat_name, position 等
+        scroll_times: 读取时向上滚动截图次数
+        scroll_amount: 每次滚动量
+
+    Returns:
+        聊天文本内容，失败返回空字符串
+    """
+    name = m.get("chat_name", "")
+    position = m.get("position")
+    if not position:
+        logger.warning(f"[{name}] 缺少 position 信息，跳过")
+        return ""
+
+    if not click_chat_by_position(position):
+        logger.warning(f"[{name}] 点击失败")
+        return ""
+
+    time.sleep(0.5)
+
+    hide_window(config.APP_NAME)
+    time.sleep(0.3)
+
+    # messages = read_chat_area(scroll_times=scroll_times, scroll_amount=scroll_amount)
+    messages = 'reading chat area...'
+    show_window(config.APP_NAME)
+
+    click_chat_by_position(position)
+
+    if messages:
+        logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")
+    else:
+        logger.warning(f"[{name}] 未读取到聊天消息")
+
+    return messages
 
 
 def send_reply(reply_text):

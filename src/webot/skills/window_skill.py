@@ -79,6 +79,46 @@ def minimize_window(window_title, delay=config.RETRY_DELAY):
         return False
 
 
+def hide_window(window_title, delay=config.RETRY_DELAY):
+    windows = gw.getWindowsWithTitle(window_title)
+    if windows:
+        win = windows[0]
+        try:
+            win.minimize()
+            time.sleep(delay)
+            logger.info(f"窗口已最小化: {window_title}")
+            return True
+        except Exception as e:
+            logger.error(f"最小化窗口失败: {window_title}, 错误: {e}")
+            return False
+    else:
+        logger.error(f"最小化失败，未找到窗口: {window_title}")
+        return False
+
+
+HWND_TOPMOST = -1
+
+def show_window(window_title, delay=config.RETRY_DELAY):
+    windows = gw.getWindowsWithTitle(window_title)
+    if windows:
+        win = windows[0]
+        try:
+            user32 = ctypes.windll.user32
+            user32.ShowWindow(win._hWnd, 9)  # SW_RESTORE
+            user32.SetWindowPos(win._hWnd, HWND_TOPMOST, 0, 0, 0, 0, 0x0001 | 0x0002)
+            user32.SetForegroundWindow(win._hWnd)
+            user32.BringWindowToTop(win._hWnd)
+            time.sleep(delay)
+            logger.info(f"窗口已恢复并置顶: {window_title}")
+            return True
+        except Exception as e:
+            logger.error(f"恢复窗口失败: {window_title}, 错误: {e}")
+            return False
+    else:
+        logger.error(f"恢复失败，未找到窗口: {window_title}")
+        return False
+
+
 def maximize_window(window_title, delay=config.RETRY_DELAY):
     """
     最大化指定标题的窗口。

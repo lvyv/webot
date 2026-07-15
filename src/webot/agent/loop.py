@@ -1,20 +1,16 @@
 import multiprocessing
 import threading
-import time
+from collections import deque
 from queue import Empty
 
-from webot.utils import config
-
-from ..utils import AGENT_POLL_INTERVAL, AGENT_MAX_TOOL_ITERATIONS, WECHAT_WINDOW_TITLE
+from ..utils import AGENT_MAX_TOOL_ITERATIONS
 from ..utils import get_logger
 from ..skills.reddot_skill import get_unread_chats
-from ..skills.window_skill import minimize_window
 from ..skills.auto_reply_skill import (
     load_rules,
     should_auto_reply,
     select_reply,
-    click_chat_by_position,
-    read_chat_area,
+    process_single_chat,
     find_file_helper_y,
     send_confirm_request,
 )
@@ -63,6 +59,7 @@ class ReplyWorker(multiprocessing.Process):
         self._llm_model = llm_model
         self.daemon = True
         self._pending: dict[str, dict] = {}
+        self._last_messages: dict[str, str] = {}
 
     def run(self):
         self._init_worker()
@@ -76,9 +73,39 @@ class ReplyWorker(multiprocessing.Process):
                 break
 
             try:
+                task = self._dedup_task(task)
+                if task is None:
+                    continue
                 self._process(task)
             except Exception as e:
                 logger.error(f"Worker 处理异常: {e}")
+
+    def _dedup_task(self, task):
+        """比较本次 OCR 文本与上次处理的内容，提取新消息。"""
+        chat_name = task["chat_name"]
+        messages = task.get("messages", "")
+        if not messages:
+            return None
+
+        last = self._last_messages.get(chat_name, "")
+        if not last:
+            self._last_messages[chat_name] = messages
+            return task
+
+        # 查找旧文本在新文本中的位置（旧文本可能是新文本的子串）
+        pos = messages.find(last)
+        if pos >= 0:
+            new_part = (messages[:pos] + messages[pos + len(last):]).strip()
+        else:
+            new_part = messages
+
+        if not new_part:
+            logger.info(f"[{chat_name}] 无新消息，跳过")
+            return None
+
+        self._last_messages[chat_name] = messages
+        task["new_messages"] = new_part
+        return task
 
     def _init_worker(self):
         from .memory import Memory, JsonLinesBackend
@@ -111,10 +138,13 @@ class ReplyWorker(multiprocessing.Process):
                 self._handle_confirm_response(confirm)
             return
 
-        logger.info(f"Worker 处理 [{chat_name}]")
+        # 提取本次新增的消息
+        new_messages = task.get("new_messages", messages)
+
+        logger.info(f"Worker 处理 [{chat_name}]（新消息长度: {len(new_messages)}）")
 
         if self._reply_mode in ("llm", "llm_with_fallback"):
-            ok = self._process_llm(chat_name, messages, preview)
+            ok = self._process_llm(chat_name, messages, preview, new_messages)
             if not ok and self._reply_mode == "llm_with_fallback":
                 self._process_template(chat_name, task)
         else:
@@ -144,7 +174,7 @@ class ReplyWorker(multiprocessing.Process):
                 "reply_text": reply_text,
             })
 
-    def _process_llm(self, chat_name, messages, preview):
+    def _process_llm(self, chat_name, messages, preview, new_messages=None):
         if not self._llm:
             return False
 
@@ -159,7 +189,13 @@ class ReplyWorker(multiprocessing.Process):
         for c in ctx:
             llm_messages.append(c)
 
-        llm_messages.append({"role": "user", "content": f"来自 [{chat_name}] 的消息:\n{messages or preview}"})
+        user_content = f"来自 [{chat_name}] 的消息:\n{new_messages or messages or preview}"
+        if new_messages and new_messages != messages:
+            user_content = (
+                f"【聊天完整内容】\n{messages}\n\n"
+                f"【本次新增消息】\n{new_messages}"
+            )
+        llm_messages.append({"role": "user", "content": user_content})
 
         tools = self._skill_mgr.get_tools_spec() if self._skill_mgr else []
 
@@ -254,6 +290,7 @@ class MainLoop:
         self.reply_mode = "template"
         self.auto_reply_enabled = True
         self.current_processing = None
+        self._pending_chats: deque = deque()
 
         self._task_queue = multiprocessing.Queue()
         self._reply_queue = multiprocessing.Queue()
@@ -286,6 +323,7 @@ class MainLoop:
         self._processed_count = 0
         self._first_tick = True
         self.current_processing = None
+        self._pending_chats.clear()
 
     def reload_rules(self):
         self.rules = load_rules()
@@ -316,6 +354,7 @@ class MainLoop:
             logger.error(f"检测未读异常: {e}")
             return [], self._processed_count, self.current_processing
 
+        # 首次 tick：记录所有未读，不加入队列，不处理
         if self._first_tick:
             self._first_tick = False
             for m in unreads:
@@ -324,6 +363,7 @@ class MainLoop:
                 logger.info(f"首次发现 {len(unreads)} 个未读（已记录，本次不处理）")
             return unreads, self._processed_count, self.current_processing
 
+        # 检测新未读，加入待处理队列（FIFO）
         for m in unreads:
             name = m["chat_name"]
             preview = m.get("preview", "")
@@ -338,25 +378,26 @@ class MainLoop:
             if not should_auto_reply(name, self.rules):
                 continue
 
-            # 在 UI 进程执行微信操作：点击联系人 → 读取聊天记录
-            logger.info(f"[{name}] 读取聊天记录")
+            self._pending_chats.append(m)
+            logger.info(f"[{name}] 加入待处理队列（队列长度 {len(self._pending_chats)}）")
+
+        # 每 tick 从队列头部处理一个联系人（FIFO）
+        if self._pending_chats:
+            m = self._pending_chats.popleft()
+            name = m["chat_name"]
             self.current_processing = name
-            if not click_chat_by_position(m["position"]):
-                logger.warning(f"[{name}] 点击失败，跳过")
-                self.current_processing = None
-                continue
+            logger.info(f"[{name}] 开始处理（剩余队列 {len(self._pending_chats)}）")
+
+            messages = process_single_chat(m)
             
-            time.sleep(0.5)
-            minimize_window(config.APP_NAME)
-            messages = read_chat_area()
             if messages:
                 logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")
+                task = {**m, "messages": messages}
+                self._task_queue.put(task)
             else:
                 logger.warning(f"[{name}] 未读取到聊天消息")
 
-            # 把聊天内容连同任务信息一起发给 Worker 处理
-            task = {**m, "messages": messages}
-            self._task_queue.put(task)
+            self.current_processing = None
 
         return unreads, self._processed_count, self.current_processing
 
@@ -383,6 +424,7 @@ class MainLoop:
         """执行回复操作：点击联系人 → 发送消息。"""
         click_y = instr.get("click_y")
         if click_y is not None:
+            from ..skills.auto_reply_skill import click_chat_by_position
             click_chat_by_position({"y": click_y})
         chat_name = instr.get("chat_name", "")
         reply_text = instr.get("reply_text", "")

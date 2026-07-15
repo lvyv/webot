@@ -74,9 +74,9 @@ def capture_chat_list_region():
 
     region = (
         left + CHAT_LIST_TAB_WIDTH,
-        top + CHAT_LIST_TOP_OFFSET,
+        top, # + CHAT_LIST_TOP_OFFSET,
         list_right - (left + CHAT_LIST_TAB_WIDTH),
-        ch - CHAT_LIST_TOP_OFFSET,
+        ch, # - CHAT_LIST_TOP_OFFSET,
     )
 
     try:
@@ -91,7 +91,7 @@ def capture_chat_list_region():
     # cv2.imwrite(debug_path, bgr)
     # logger.info(f"聊天列表截图已保存: {debug_path}")
 
-    return bgr
+    return bgr, left, top
 
 def detect_red_dots(bgr_img, draw_result=False):
     hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
@@ -238,11 +238,11 @@ def match_red_dots_to_items(red_dots, sorted_groups):
     return result
 
 def get_unread_chats():
-    img = capture_chat_list_region()    # 这个区域是图片是微信窗口左边0，并通过识别微信联系人面板上面的搜索框右侧"+"图标位置计算得到。
+    img, deltaX, deltaY = capture_chat_list_region()    # 这个区域是图片是微信窗口左边0，并通过识别微信联系人面板上面的搜索框右侧"+"图标位置计算得到。
     if img is None:
         return []
 
-    dots = detect_red_dots(img)         # 这个红点返回值是向右下偏移了RED_DOT_OFFSET_X (Y)的位置
+    dots = detect_red_dots(img)         # 红点值根据img，相对坐标而不是屏幕坐标
     if not dots:
         logger.debug("未检测到红点")
         return []
@@ -255,8 +255,10 @@ def get_unread_chats():
     groups = group_items_by_chat(items) # 按照每个识别文字块纵向距离进行分组，这样每个组就是一个聊天联系人，包含姓名、时间、预览
     matched = match_red_dots_to_items(dots, groups)
     if matched:
-        names = [m["chat_name"] for m in matched]
-        logger.info(f"检测到未读: {names}")
+        for m in matched:
+            logger.info(f"检测到未读: {m['chat_name']}")    # 目前的position都是img的相对位置，需要考虑窗口的偏移量，成为屏幕坐标。
+            m['position']['x'] += deltaX
+            m['position']['y'] += deltaY
     return matched
 
 

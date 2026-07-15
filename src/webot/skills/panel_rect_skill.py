@@ -87,7 +87,7 @@ def get_search_bar_rect():
     y = win["top"] + config.TITLE_BAR_HEIGHT
     w = ptR["x"] - win["left"]- config.CHAT_LIST_LEFT_OFFSET + config.SHORTCUTS_CENTER_TO_LIST_RIGHT
     h = config.CHAT_LIST_TOP_OFFSET - config.TITLE_BAR_HEIGHT
-    return (x, y, w, h)
+    return (int(x), int(y), int(w), int(h))
 
 
 def get_contact_list_rect():
@@ -99,12 +99,11 @@ def get_contact_list_rect():
     y = win["top"] + CHAT_LIST_TOP_OFFSET
     w = ptR["x"] - win["left"]- config.CHAT_LIST_LEFT_OFFSET + config.SHORTCUTS_CENTER_TO_LIST_RIGHT
     h = win["h"] - CHAT_LIST_TOP_OFFSET
-    return (x, y, w, h)
+    return (int(x), int(y), int(w), int(h))
 
 
 def get_chat_history_rect():
     win = _get_window_dims()
-    
     ptR = _calculate_screen_position(config.IMG_SHORTCUTS)
     ptRD = _calculate_screen_position(config.IMG_MSG_INPUT_RIGHT_UP_CORNER)
     list_w = ptR["x"] - win["left"] - config.CHAT_LIST_LEFT_OFFSET + config.SHORTCUTS_CENTER_TO_LIST_RIGHT
@@ -114,7 +113,7 @@ def get_chat_history_rect():
     y = win["top"] + config.PANEL_CHAT_HISTORY_TOP_OFFSET
     w = win["w"] - list_w -config.CHAT_LIST_LEFT_OFFSET
     h = ptRD['y'] - y 
-    return (x, y, w, h)
+    return (int(x), int(y), int(w), int(h))
 
 
 def get_message_input_rect():
@@ -122,11 +121,10 @@ def get_message_input_rect():
     ptR = _calculate_screen_position(config.IMG_MSG_INPUT_RIGHT_UP_CORNER)
     ptR2 = _calculate_screen_position(config.IMG_SHORTCUTS)
     list_w = ptR2["x"] - win["left"] - config.CHAT_LIST_LEFT_OFFSET + config.SHORTCUTS_CENTER_TO_LIST_RIGHT
-
     if win is None or ptR is None:
         return None
     x = win["left"] + list_w + config.CHAT_LIST_LEFT_OFFSET
     y = ptR['y'] - 5
     w = win["w"] - list_w -config.CHAT_LIST_LEFT_OFFSET
     h = win['top'] + win["h"] - y
-    return (x, y, w, h)
+    return (int(x), int(y), int(w), int(h))

@@ -10,9 +10,10 @@ from webot.utils import config
 pyautogui.FAILSAFE = FAILSAFE_ENABLED
 
 logging.basicConfig(
-    level=logging.WARN,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    force=True,
 )
 
 

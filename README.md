@@ -32,4 +32,12 @@ print("CUDA available:", paddle.is_compiled_with_cuda())
 （2）保存文件，需要利用QT6的Mimedata，直接粘贴到文件夹（import shutil）。  
 （3）当激活窗口等操作后，最好要等个半秒时间，再进行截图、图片特征查找等操作，不然容易失败（刷新不及时）。  
 （4）关于logger的知识点：logging.logging.getLogger(name)，是一个工厂单例范式，只要name相同，会返回同样一个logger，不会给新的。如果name是a.b.c这种，会自动建立logger的层次关系，底层继承上层的LEVEL。但不会继承handler、formatter、filter等。子层logger如果有handler，则用handler处理日志，然后把消息往父级logger传播。  
-（5）
+### 2.3需要解决的问题
+（1）聊天联系人面板的联系人姓名...  
+（2）两次聊天新消息处理之间有过多消息导致无重叠会漏信息。  
+（3）后端消息处理引擎还没有实现，LLM直接回复为实现。  
+（4）ticker读取指令任务队列，通过搜索联系人，回复消息，然后需要退出聊天状态。  
+（5）双屏报错。  
+（6）载入paddleOCR会界面凝固一段时间。  
+（7）Agent如何切入两个不同的进程。
+
