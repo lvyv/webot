@@ -60,8 +60,16 @@ class WebotWindow(QMainWindow):
         self._setup_ui()
         self._agent_timer.timeout.connect(self._agent_tick)
 
+    def minimize_self(self):
+        self.hide()
+
+    def restore_self(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
     def _init_agent(self):
-        self.agent = MainLoop()
+        self.agent = MainLoop(window=self)
 
     def _init_recording(self):
         self.rec_mgr = RecordingManager(work_dir=os.getcwd())

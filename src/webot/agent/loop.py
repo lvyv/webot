@@ -1,5 +1,4 @@
 import multiprocessing
-import threading
 from collections import deque
 from queue import Empty
 
@@ -127,6 +126,8 @@ class ReplyWorker(multiprocessing.Process):
         preview = task.get("preview", "")
         messages = task.get("messages", "")
 
+        logger.info(f"Worker 收到 [{chat_name}] 的任务（messages: {messages[:200]}）")
+        
         pending_key = f"{PENDING_CONFIRM_PREFIX}{chat_name}"
         if pending_key in self._pending:
             self._handle_confirm_reply(task)
@@ -282,7 +283,8 @@ class ReplyWorker(multiprocessing.Process):
 class MainLoop:
     """UI 进程内的调度器：负责执行 reply 指令 + 截图识别 + 任务入队。"""
 
-    def __init__(self):
+    def __init__(self, window=None):
+        self._window = window
         self.rules = load_rules()
         self._seen_chats = {}
         self._processed_count = 0
@@ -299,6 +301,7 @@ class MainLoop:
             reply_queue=self._reply_queue,
             reply_mode=self.reply_mode,
         )
+        self._worker.start()
 
     def start_worker(self):
         if self._worker.is_alive():
@@ -309,8 +312,6 @@ class MainLoop:
             reply_mode=self.reply_mode,
         )
         self._worker.start()
-        self._result_thread = threading.Thread(target=self._collect_results, daemon=True)
-        self._result_thread.start()
         logger.info("Worker 已启动")
 
     def stop_worker(self):
@@ -328,23 +329,17 @@ class MainLoop:
     def reload_rules(self):
         self.rules = load_rules()
 
-    def _collect_results(self):
-        """后台线程：持续读取 reply_queue 的结果，更新 processed_count。"""
-        while True:
-            try:
-                instr = self._reply_queue.get()
-                if instr.get("action") in ("reply", "llm_reply"):
-                    self._processed_count += 1
-            except Exception:
-                break
+    def minimize_webot_window(self):
+        if self._window:
+            self._window.minimize_self()
+
+    def restore_webot_window(self):
+        if self._window:
+            self._window.restore_self()
 
     def tick(self):
         if not self.auto_reply_enabled:
             return [], self._processed_count, self.current_processing
-
-        if not self._worker.is_alive():
-            logger.warning("Worker 未运行，启动 Worker")
-            self.start_worker()
 
         self._consume_reply_queue()
 
@@ -388,10 +383,14 @@ class MainLoop:
             self.current_processing = name
             logger.info(f"[{name}] 开始处理（剩余队列 {len(self._pending_chats)}）")
 
-            messages = process_single_chat(m)
-            
+            self.minimize_webot_window()
+            try:
+                messages = process_single_chat(m)
+            finally:
+                self.restore_webot_window()
+
             if messages:
-                logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")
+                # logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")
                 task = {**m, "messages": messages}
                 self._task_queue.put(task)
             else:
@@ -415,6 +414,7 @@ class MainLoop:
             try:
                 if action in ("reply", "llm_reply"):
                     self._execute_reply(instr)
+                    self._processed_count += 1
                 elif action == "ask_confirm":
                     self._execute_ask_confirm(instr)
             except Exception as e:

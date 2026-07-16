@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" pages="5">
   <diagram name="architecture" id="Eg0xU4Eg2ea8Dn4AiN0R">
-    <mxGraphModel dx="3100" dy="1001" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="3409" dy="1334" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -203,46 +203,46 @@
           <mxGeometry height="20" width="60" x="-550" y="440" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;fontSize=14;fontStyle=1;fontColor=#1A237E;verticalAlign=top;" vertex="1">
-          <mxGeometry height="80" width="740" x="-160" y="1048" as="geometry" />
+          <mxGeometry height="80" width="740" x="90" y="380" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#3F51B5;" value="入口层" vertex="1">
-          <mxGeometry height="24" width="740" x="-160" y="1048" as="geometry" />
+          <mxGeometry height="24" width="740" x="90" y="380" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3F51B5;fontSize=12;fontColor=#1A237E;" value="webot CLI / pyproject entry" vertex="1">
-          <mxGeometry height="36" width="160" x="-135" y="1070" as="geometry" />
+          <mxGeometry height="36" width="160" x="115" y="402" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00796B;fontSize=14;fontStyle=1;fontColor=#004D40;verticalAlign=top;" vertex="1">
-          <mxGeometry height="100" width="740" x="-160" y="1150" as="geometry" />
+          <mxGeometry height="100" width="740" x="90" y="482" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-5" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#00796B;" value="GUI层 (PyQt6)" vertex="1">
-          <mxGeometry height="24" width="740" x="-160" y="1150" as="geometry" />
+          <mxGeometry height="24" width="740" x="90" y="482" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2DFDB;strokeColor=#00796B;fontSize=12;fontColor=#004D40;" value="WebotWindow (QMainWindow)" vertex="1">
-          <mxGeometry height="36" width="170" x="-140" y="1190" as="geometry" />
+          <mxGeometry height="36" width="170" x="110" y="522" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2DFDB;strokeColor=#00796B;fontSize=12;fontColor=#004D40;" value="QTimer 轮询触发" vertex="1">
-          <mxGeometry height="36" width="160" x="90" y="1190" as="geometry" />
+          <mxGeometry height="36" width="160" x="340" y="522" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2DFDB;strokeColor=#00796B;fontSize=12;fontColor=#004D40;" value="日志 / 按钮 / 模式选择" vertex="1">
-          <mxGeometry height="36" width="170" x="310" y="1190" as="geometry" />
+          <mxGeometry height="36" width="170" x="560" y="522" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=14;fontStyle=1;fontColor=#BF360C;verticalAlign=top;" vertex="1">
-          <mxGeometry height="350" width="740" x="-160" y="1270" as="geometry" />
+          <mxGeometry height="350" width="740" x="90" y="602" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-10" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#E65100;" value="Agent核心层" vertex="1">
-          <mxGeometry height="24" width="740" x="-160" y="1270" as="geometry" />
+          <mxGeometry height="24" width="740" x="90" y="602" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=12;fontStyle=1;fontColor=#BF360C;" value="AgentLoop 调度引擎" vertex="1">
-          <mxGeometry height="36" width="160" x="-30" y="1341" as="geometry" />
+          <mxGeometry height="36" width="160" x="220" y="673" as="geometry" />
         </mxCell>
         <mxCell id="TLA_WQKjLO197_QAyRvn-3" edge="1" parent="1" source="fa4pAw6XukqmkfQ2OAKR-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="fa4pAw6XukqmkfQ2OAKR-13">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=12;fontColor=#BF360C;" value="Session 上下文管理&lt;div&gt;包含与llm的某次对话的上下文&lt;/div&gt;&lt;div&gt;还包含所有微信联系人的上下文&lt;/div&gt;" vertex="1">
-          <mxGeometry height="50" width="180" x="200" y="1429" as="geometry" />
+          <mxGeometry height="50" width="180" x="450" y="761" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=12;fontColor=#BF360C;" value="Memory 记忆系统" vertex="1">
-          <mxGeometry height="36" width="150" x="58" y="1497" as="geometry" />
+          <mxGeometry height="36" width="150" x="308" y="829" as="geometry" />
         </mxCell>
         <mxCell id="TLA_WQKjLO197_QAyRvn-1" edge="1" parent="1" source="fa4pAw6XukqmkfQ2OAKR-14" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="fa4pAw6XukqmkfQ2OAKR-12">
           <mxGeometry relative="1" as="geometry" />
@@ -251,58 +251,58 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=12;fontColor=#BF360C;" value="LLMClient (DeepSeek/OpenAI)" vertex="1">
-          <mxGeometry height="36" width="180" x="335" y="1341" as="geometry" />
+          <mxGeometry height="36" width="180" x="585" y="673" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#388E3C;fontSize=14;fontStyle=1;fontColor=#1B5E20;verticalAlign=top;" vertex="1">
-          <mxGeometry height="320" width="350" x="665" y="1400" as="geometry" />
+          <mxGeometry height="320" width="350" x="915" y="732" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-17" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#388E3C;" value="技能执行层 (Skills)" vertex="1">
-          <mxGeometry height="24" width="350" x="665" y="1400" as="geometry" />
+          <mxGeometry height="24" width="350" x="915" y="732" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#388E3C;fontSize=11;fontColor=#1B5E20;" value="UI操作技能&#xa;Click / Input / Scroll" vertex="1">
-          <mxGeometry height="40" width="160" x="760" y="1654" as="geometry" />
+          <mxGeometry height="40" width="160" x="1010" y="986" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#388E3C;fontSize=11;fontColor=#1B5E20;" value="窗口控制技能&#xa;ActivateWindow" vertex="1">
-          <mxGeometry height="40" width="160" x="760" y="1502" as="geometry" />
+          <mxGeometry height="40" width="160" x="1010" y="834" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#388E3C;fontSize=11;fontColor=#1B5E20;" value="信息感知技能&#xa;OCR / RedDot / ReadChat" vertex="1">
-          <mxGeometry height="40" width="160" x="760" y="1434" as="geometry" />
+          <mxGeometry height="40" width="160" x="1010" y="766" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#388E3C;fontSize=11;fontColor=#1B5E20;" value="自动回复技能&#xa;ProcessChat / SendReply" vertex="1">
-          <mxGeometry height="40" width="160" x="760" y="1586" as="geometry" />
+          <mxGeometry height="40" width="160" x="1010" y="918" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontSize=14;fontStyle=1;fontColor=#4A148C;verticalAlign=top;" vertex="1">
-          <mxGeometry height="300" width="210" x="480" y="1758" as="geometry" />
+          <mxGeometry height="300" width="210" x="730" y="1090" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-23" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#7B1FA2;" value="数据层" vertex="1">
-          <mxGeometry height="24" width="210" x="480" y="1778" as="geometry" />
+          <mxGeometry height="24" width="210" x="730" y="1110" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#7B1FA2;fontSize=12;fontColor=#4A148C;" value="rules.json 回复规则" vertex="1">
-          <mxGeometry height="36" width="160" x="505" y="1942" as="geometry" />
+          <mxGeometry height="36" width="160" x="755" y="1274" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#7B1FA2;fontSize=12;fontColor=#4A148C;" value="memory.jsonl / sqlite" vertex="1">
-          <mxGeometry height="36" width="160" x="505" y="1825" as="geometry" />
+          <mxGeometry height="36" width="160" x="755" y="1157" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#7B1FA2;fontSize=12;fontColor=#4A148C;" value=".env API Key" vertex="1">
-          <mxGeometry height="36" width="130" x="520" y="1882" as="geometry" />
+          <mxGeometry height="36" width="130" x="770" y="1214" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#7B1FA2;fontSize=12;fontColor=#4A148C;" value="images 模板资源" vertex="1">
-          <mxGeometry height="36" width="140" x="515" y="2002" as="geometry" />
+          <mxGeometry height="36" width="140" x="765" y="1334" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBE9E7;strokeColor=#BF360C;fontSize=14;fontStyle=1;fontColor=#BF360C;verticalAlign=top;" vertex="1">
-          <mxGeometry height="247" width="350" x="1081" y="1250" as="geometry" />
+          <mxGeometry height="247" width="350" x="1331" y="582" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-29" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#BF360C;" value="外部能力" vertex="1">
-          <mxGeometry height="24" width="240" x="1136" y="1262" as="geometry" />
+          <mxGeometry height="24" width="240" x="1386" y="594" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCCBC;strokeColor=#BF360C;fontSize=12;fontColor=#BF360C;" value="pyautogui / window API" vertex="1">
-          <mxGeometry height="36" width="160" x="1258" y="1436" as="geometry" />
+          <mxGeometry height="36" width="160" x="1508" y="768" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCCBC;strokeColor=#BF360C;fontSize=12;fontColor=#BF360C;" value="PaddleOCR" vertex="1">
-          <mxGeometry height="36" width="140" x="1098" y="1436" as="geometry" />
+          <mxGeometry height="36" width="140" x="1348" y="768" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCCBC;strokeColor=#BF360C;fontSize=12;fontColor=#BF360C;" value="DeepSeek / LLM API" vertex="1">
-          <mxGeometry height="36" width="180" x="1166" y="1341" as="geometry" />
+          <mxGeometry height="36" width="180" x="1416" y="673" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-33" edge="1" parent="1" source="fa4pAw6XukqmkfQ2OAKR-3" style="endArrow=classic;endFill=1;strokeColor=#3F51B5;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="fa4pAw6XukqmkfQ2OAKR-6">
           <mxGeometry relative="1" as="geometry" />
@@ -362,7 +362,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="fa4pAw6XukqmkfQ2OAKR-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=12;fontColor=#BF360C;" value="SkillManager 工具路由" vertex="1">
-          <mxGeometry height="36" width="180" x="335" y="1550" as="geometry" />
+          <mxGeometry height="36" width="180" x="585" y="882" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

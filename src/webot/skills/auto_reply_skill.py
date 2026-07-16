@@ -8,9 +8,6 @@ import cv2
 import numpy as np
 import pyautogui
 
-from webot.utils import config
-
-from .window_skill import hide_window, show_window
 from .reddot_skill import get_wechat_rect, get_unread_chats
 from .panel_rect_skill import get_chat_history_rect
 from .scroll_skill import scroll_repeatedly
@@ -148,7 +145,7 @@ def send_confirm_request(helper_y, chat_name, reply_text):
     return send_reply(confirm_msg)
 
 
-def read_chat_area(scroll_times=0, scroll_amount=30):
+def read_chat_area(scroll_times=0, scroll_amount=0):
     """读取当前选中的聊天区域内容。
 
     Args:
@@ -163,7 +160,7 @@ def read_chat_area(scroll_times=0, scroll_amount=30):
         logger.warning("无法获取聊天历史区域")
         return ""
 
-    region = (rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1])
+    region = (rect[0], rect[1], rect[2], rect[3])
     if region[2] <= 0 or region[3] <= 0:
         logger.warning("聊天历史区域尺寸无效")
         return ""
@@ -220,13 +217,14 @@ def read_chat_area(scroll_times=0, scroll_amount=30):
     return "\n".join(lines)
 
 
-def process_single_chat(m, scroll_times=0, scroll_amount=30):
+def process_single_chat(m, scroll_times=0, scroll_amount=0):
     """封装点击联系人 + 读取聊天记录的操作。
 
     Args:
         m: 聊天联系人信息 dict，需包含 chat_name, position 等
         scroll_times: 读取时向上滚动截图次数
         scroll_amount: 每次滚动量
+        【注意】缺省情况下，每次处理一屏数据。
 
     Returns:
         聊天文本内容，失败返回空字符串
@@ -243,17 +241,13 @@ def process_single_chat(m, scroll_times=0, scroll_amount=30):
 
     time.sleep(0.5)
 
-    hide_window(config.APP_NAME)
-    time.sleep(0.3)
-
-    # messages = read_chat_area(scroll_times=scroll_times, scroll_amount=scroll_amount)
-    messages = 'reading chat area...'
-    show_window(config.APP_NAME)
+    messages = read_chat_area(scroll_times=scroll_times, scroll_amount=scroll_amount)
 
     click_chat_by_position(position)
 
     if messages:
-        logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")
+        # logger.info(f"[{name}] 聊天内容:\n{messages[:200]}")
+        pass
     else:
         logger.warning(f"[{name}] 未读取到聊天消息")
 
