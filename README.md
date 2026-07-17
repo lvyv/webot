@@ -23,22 +23,27 @@ print("CUDA available:", paddle.is_compiled_with_cuda())
 ## 2.Design Consideration
 ### 2.1AgentLoop的ticker
 （1）UI层的Timer会5秒一次触发，在窗口的事件处理函数中，主要功能是调用AgentLoop的ticker函数，根据结果绘制到界面上。  
-（2）UI窗口创建的时候会附带AgentLoop的实例agent被创建。UI起来之后，点击“开始监控”按钮，定时器启动，“停止监控”，定时器关闭。  
-（3）AgentLoop的ticker函数完成核心功能是每个ticker周期观察一次界面（发现红点），产生任务。按照目前的机制，Agent起来之前的红点不处理，只记录到_seen_chats中，只有是Agent运行起来之后，新到来的消息，Agent才会根据rules.json中设置的哪些联系人以及群需要自动回复，以及回复的规则去处理。
+（2）UI窗口创建的时候会附带MainLoop的实例agent被创建。UI起来之后，点击“开始监控”按钮，定时器启动，“停止监控”，定时器关闭。  
+（3）MainLoop的ticker函数完成核心功能是每个ticker周期观察一次界面（发现红点），产生任务。按照目前的机制，Agent起来之前的红点不处理，只记录到_seen_chats中，只有是Agent运行起来之后，新到来的消息，Agent才会根据rules.json中设置的哪些联系人以及群需要自动回复，以及回复的规则去处理。
 【注意】这个设计是比较合理的，就是尽量让新消息由人去处理而不是Agent已启动，就把所有消息都自动处理掉。  
 （4）Agent目前处理消息是每次处理一个联系人，在_handle_one中处理。这个函数内部再按照模板处理或者大模型处理。
+（5）Agent（MainLoop）处理消息采用队列，每次只读一个需要处理的红点联系人（在rules.json）中，截屏读取当前信息，然后写任务队列。
 ### 2.2微信操作技巧
 （1）发送文件，需要利用QT6的Mimedata，设置为剪切板格式。  
 （2）保存文件，需要利用QT6的Mimedata，直接粘贴到文件夹（import shutil）。  
 （3）当激活窗口等操作后，最好要等个半秒时间，再进行截图、图片特征查找等操作，不然容易失败（刷新不及时）。  
 （4）关于logger的知识点：logging.logging.getLogger(name)，是一个工厂单例范式，只要name相同，会返回同样一个logger，不会给新的。如果name是a.b.c这种，会自动建立logger的层次关系，底层继承上层的LEVEL。但不会继承handler、formatter、filter等。子层logger如果有handler，则用handler处理日志，然后把消息往父级logger传播。  
 ### 2.3需要解决的问题
-（1）聊天联系人面板的联系人姓名...
+（1）聊天联系人面板的联系人姓名...  
 （2）识别会在面板比较窄的时候出现错误  
 （3）后端消息处理引擎还没有实现，LLM直接回复为实现。  
 （4）ticker读取指令任务队列，通过搜索联系人，回复消息，然后需要退出聊天状态。  
 （5）双屏报错。  
 （6）载入paddleOCR会界面凝固一段时间。  
-（7）Agent如何切入两个不同的进程。
+（7）Agent如何切入两个不同的进程。  
 （8）两次聊天新消息处理之间有过多消息导致无重叠会漏信息。  
-（9）关于日志logging的问题：在导入paddleOCR模型后，logging的日志级别会被paddleOCR代码修改，导致无法正常输出。（FIX）
+（9）想要把架构MainLoop和ReplyWorker变为两个自主Agent。    
+（10）关于日志logging的问题：在导入paddleOCR模型后，logging的日志级别会被paddleOCR代码修改，导致无法正常输出。（FIX）
+### 2.4业务需求（陶研冰）
+（1）如何通过微格、微课实训视频去进行评价  
+（2）如何两性一度智能批改上传的教学设计  
