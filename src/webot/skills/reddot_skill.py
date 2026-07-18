@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 
 import cv2
 import numpy as np
@@ -146,9 +147,18 @@ def detect_red_dots(bgr_img, draw_result=False):
     return dots
 
 def ocr_chat_list(bgr_img):
+    #记录下面代码执行时间
+    time_start = time.time()
     ocr = get_ocr_engine()
+    time_end = time.time()
+    logger.info(f"OCR 引擎初始化耗时: {time_end - time_start:.3f} 秒")
+
     rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+
+    time_start_ocr = time.time()
     result = ocr.predict(input=rgb_img)
+    time_end_ocr = time.time()
+    logger.info(f"OCR 识别耗时: {time_end_ocr - time_start_ocr:.3f} 秒")
 
     if not result:
         return []

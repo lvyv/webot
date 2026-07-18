@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
 # utils.py
-
-import pyautogui
 import logging
 from importlib.resources import files, as_file
 from .config import FAILSAFE_ENABLED
 from webot.utils import config
 
-pyautogui.FAILSAFE = FAILSAFE_ENABLED
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.WARNING,
     format='%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     force=True,
 )
-
 
 def get_logger(name=None):
     if name is None:
